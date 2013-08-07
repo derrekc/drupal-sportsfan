@@ -7,5 +7,137 @@
  */
 
 function pickem_schema() {
-	return array();
+	return array(
+		'school' => array(
+			'description' => 'Table of schools in college football',
+			'fields' => array(
+				'sid' => array(
+					'type' => 'serial',
+					'not null' => TRUE,
+					'unsigned' => TRUE,
+				),
+				'title' => array(
+					'type' => 'varchar',
+					'length' => 35,
+					'not null' => TRUE,
+					'default' => '',
+				),
+				'displaytitle' => array(
+					'type' => 'varchar',
+					'length' => 45,
+					'not null' => TRUE,
+					'default' => '',
+				),
+				'machine_name' => array(
+					'type' => 'varchar',
+					'length' => 35,
+					'not null' => TRUE,
+					'default' => '',
+				),
+				'nickname' => array(
+					'type' => 'varchar',
+					'length' => 35,
+					'default' => '',
+				),
+				'conf_id' => array(
+					'type' => 'varchar',
+					'length' => '15',
+					'not null' => TRUE,
+					'default' => '',
+				),
+				'conf_division' => array(
+					'type' => 'varchar',
+					'length' => 25,
+					'default' => '',
+				),
+				'active' => array(
+					'type' => 'int',
+					'size' => 'tiny',
+					'not null' => TRUE,
+					'default' => 1,
+				),
+			),
+			'primary key' => array('sid'),
+		),
+		'pick' => array(
+			'fields' => array(
+				'pid' => array(
+					'type' => 'serial',
+					'unsigned' => TRUE,
+					'not null' => TRUE,
+				),
+				'gid' => array(
+					'type' => 'int',
+					'unsigned' => TRUE,
+					'not null' => TRUE,
+				),
+				'pick_school_name' => array(
+					'type' => 'varchar',
+					'length' => 35,
+					'default' => NULL,
+				),
+			),
+			'primary key' => array('pid'),
+			'foreign keys' => array(
+				'game' => array(
+					'table' => 'game',
+					'columns' => array('gid' => 'gid'),
+				),
+				'school' => array(
+					'table' => 'school',
+					'columns' => array('pick_school_name' => 'machine_name'),
+				),
+			),
+		),
+		'game' => array(
+			'fields' => array(
+				'gid' => array(
+					'type' => 'serial',
+					'unsigned' => TRUE,
+					'not null' => TRUE
+				),
+				'host_school_name' => array(
+					'type' => 'varchar',
+					'length' => 35,
+					'not null' => TRUE,
+				),
+				'visiting_school_name' => array(
+					'type' => 'varchar',
+					'length' => 35,
+					'not null' => TRUE,
+				),
+				'host_score' => array(
+					'type' => 'int',
+					'size' => 'tiny',
+					'unsigned' => TRUE,
+				),
+				'visiting_score' => array(
+					'type' => 'int',
+					'size' => 'tiny',
+					'unsigned' => TRUE,
+				),
+				'winning_school_name' => array(
+					'type' => 'int',
+					'size' => 'tiny',
+					'unsigned' => TRUE,
+					'default' => NULL,
+				),
+			),
+			'primary key' => array('gid'),
+			'foreign keys' => array(
+				'host_school' => array(
+					'table' => 'school',
+					'columns' => array('host_school_name' => 'machine_name'),
+				),
+				'visiting_school' => array(
+					'table' => 'school',
+					'columns' => array('visiting_school_name' => 'machine_name'),
+				),
+				'winning_school' => array(
+					'table' => 'school',
+					'columns' => array('winning_school_name' => 'machine_name'),
+				),
+			),
+		),
+	);
 }

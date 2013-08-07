@@ -89,12 +89,49 @@ function pickem_schema() {
 				),
 			),
 		),
+		'week' => array(
+			'fields' => array(
+				'week' => array(
+					'type' => 'int',
+					'size' => 'tiny',
+					'unsigned' => TRUE,
+					'not null' => TRUE,
+					'default' => 0,
+				),
+				'season' => array(
+					'type' => 'int',
+					'unsigned' => TRUE,
+					'not null' => TRUE,
+					'default' => 0,
+				),
+				'start' => array(
+					'type' => 'int',
+					'not null' => TRUE,
+					'default' => 0,
+				),
+				'end' => array(
+					'type' => 'int',
+					'not null' => TRUE,
+					'default' => 0,	
+				),
+			),
+		),
 		'game' => array(
 			'fields' => array(
 				'gid' => array(
 					'type' => 'serial',
 					'unsigned' => TRUE,
 					'not null' => TRUE
+				),
+				'game_date' => array(
+					'type' => 'int',
+					'not null' => FALSE,
+					'default' => 0,
+				),
+				'season' => array(
+					'type' => 'int',
+					'not null' => TRUE,
+					'default' => 0,
 				),
 				'host_school_name' => array(
 					'type' => 'varchar',

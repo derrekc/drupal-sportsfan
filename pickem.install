@@ -43,9 +43,10 @@ function _pickem_load_initial_games() {
 			$o->season = $data[1];
 			$o->visiting_school_name = $data[2];
 			$o->host_school_name = $data[3];
-			$o->game_date = strtotime($data[4]);
-			$o->location = $data[5];
-			$o->neutral = $data[6] == 'neutral' ? 'Y' : 'N';
+			$o->sport = $data[4];
+			$o->game_date = strtotime($data[5]);
+			$o->location = $data[6];
+			$o->neutral = $data[7] == 'neutral' ? 'Y' : 'N';
 			drupal_write_record('game', $o);
 		}
 	}

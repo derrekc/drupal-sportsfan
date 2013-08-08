@@ -1,14 +1,116 @@
-Boston College	Boston College	bostoncollege	acc	Atlantic
-Clemson	Clemson	clemson	acc	Atlantic
-Duke	Duke	duke	acc	Coastal
-Florida State	FSU	floridastate	acc	Atlantic
-Georgia Tech	Georgia Tech	georgiatech	acc	Coastal
-Maryland	Maryland	maryland	acc	Atlantic
-Miami	Miami	miami	acc	Coastal
-North Carolina	North Carolina	northcarolina	acc	Coastal
-North Carolina State	NC State	ncstate	acc	Atlantic
-Pittsburgh	Pitt	pitt	acc	Coastal
-Syracuse	Syracuse	syracuse	acc	Atlantic
-Virginia	Virginia	virginia	acc	Coastal
-Virginia Tech	Virginia Tech	vatech	acc	Coastal
-Wake Forest	Wake Forest	wakeforest	acc	Atlantic
+Boston College	Boston College	bostoncollege	Eagles	acc	Atlantic
+Clemson	Clemson	clemson	Tigers	acc	Atlantic
+Duke	Duke	duke	Blue Devils	acc	Coastal
+Florida State	FSU	fsu	Seminoles	acc	Atlantic
+Georgia Tech	Georgia Tech	georgiatech	Yellow Jackets	acc	Coastal
+Maryland	Maryland	maryland	Terrapins	acc	Atlantic
+Miami	Miami	miami	Hurricanes	acc	Coastal
+North Carolina	North Carolina	northcarolina	Tar Heels	acc	Coastal
+North Carolina State	NC State	ncstate	Wolfpack	acc	Atlantic
+Pittsburgh	Pitt	pitt	Panthers	acc	Coastal
+Syracuse	Syracuse	syracuse	Orange	acc	Atlantic
+Virginia	Virginia	virginia	Cavaliers	acc	Coastal
+Virginia Tech	Virginia Tech	vatech	Hokies	acc	Coastal
+Wake Forest	Wake Forest	wakeforest	Demon Deacons	acc	Atlantic
+Alabama	Alabama	alabama	Crimson Tide	sec	West
+Arkansas	Arkansas	arkansas	Razorbacks	sec	West
+Auburn	Auburn	auburn	Tigers	sec	West
+Florida	Florida	florida	Gators	sec	East
+Georgia	Georgia	georgia	Bulldogs	sec	East
+Kentucky	Kentucky	kentucky	Wildcats	sec	East
+Louisiana State	LSU	lsu	Tigers	sec	West
+Mississippi	Ole Miss	mississippi	Rebels	sec	West
+Mississippi State	Mississippi State	mississippistate	Bulldogs	sec	West
+Missouri	Missouri	missouri	Tigers	sec	East
+South Carolina	South Carolina	southcarolina	Gamecocks	sec	East
+Tennessee	Tennessee	tennessee	Volunteers	sec	East
+Texas A&M	Texas A&M	texasam	Aggies	sec	West
+Vanderbilt	Vanderbilt	vanderbilt	Commodores	sec	East
+Baylor	Baylor	baylor	Bears	big12	
+Iowa State	Iowa State	iowastate	Cyclones	big12	
+Kansas	Kansas	kansas	Jawhawks	big12	
+Kansas State	Kansas State	kansasstate	Wildcats	big12	
+Oklahoma	Oklahoma	oklahoma	Sooners	big12	
+Oklahoma State	Oklahoma State	okstate	Cowboys	big12	
+Texas	Texas	texas	Longhorns	big12	
+Texas Christian	TCU	tcu	Horned Frogs	big12	
+Texas Tech	Texas Tech	texastech	Red Raiders	big12	
+West Virginia	West Virginia	westvirginia	Mountaineers	big12	
+Illinois	Illinois	illinois	Fighting Illini	big10	Leaders
+Indiana	Indiana	indiana	Hoosiers	big10	Leaders
+Iowa	Iowa	iowa	Hawkeyes	big10	Legends
+Michigan	Michigan	michigan	Wolverines	big10	Legends
+Michigan State	Michigan State	michstate	Spartans	big10	Legends
+Minnesota	Minnesota	minnesota	Golden Gophers	big10	Legends
+Nebraska	Nebraska	nebraska	Cornhuskers	big10	Legends
+Northwestern	Northwestern	northwestern	Wildcats	big10	Legends
+Ohio State	Ohio State	ohiostate	Buckeyes	big10	Leaders
+Penn State	Penn State	pennstate	Nittany Lions	big10	Leaders
+Purdue	Purdue	purdue	Boilermakers	big10	Leaders
+Wisconsin	Wisconsin	wisconsin	Badgers	big10	Leaders
+Arizona	Arizona	arizona	Wildcats	pac12	South
+Arizona State	Arizona State	arizonastate	Sun Devils	pac12	South
+California	Cal	cal	Golden Bears	pac12	North
+Colorado	Colorado	colorado	Buffaloes	pac12	South
+Oregon	Oregon	oregon	Ducks	pac12	North
+Oregon State	Oregon State	oregonstate	Beavers	pac12	North
+Southern California	USC	usc	Trojans	pac12	South
+Stanford	Stanford	stanford	Cardinal	pac12	North
+Utah	Utah	utah	Utes	pac12	South
+UCLA	UCLA	ucla	Bruins	pac12	South
+Washington	Washington	washington	Huskies	pac12	North
+Washington State	Washington State	washingtonstate	Cougars	pac12	North
+Akron	Akron	akron	Zips	mac	East
+Ball State	Ball State	ballstate	Cardinals	mac	West
+Bowling Green	Bowling Green	bowlinggreen	Falcons	mac	East
+Buffalo	Buffalo	buffalo	bulls	mac	East
+Central Michigan	Central Michigan	centralmichigan	Chippewas	mac	West
+Eastern Michigan	Eastern Michigan	easternmichigan	Eagles	mac	West
+Kent State	Kent State	kentstate	Golden Flashes	mac	East
+Miami (Ohio)	Miami (Ohio)	miamiohio	RedHawks	mac	East
+Northern Illinois	Northern Illinois	northernillinois	Huskies	mac	West
+Ohio	Ohio	ohio	Bobcats	mac	East
+Toledo	Toledo	toledo	Rockets	mac	West
+Western Michigan	Western Michigan	westernmichigan	Broncos	mac	West
+Central Florida	Central Florida	ucf	Knights	aac	
+Cincinnati	Cincinnati	cincinnati	Bearcats	aac	
+Connecticut	UConn	connecticut	Huskies	aac	
+Houston	Houston	houston	Cougars	aac	
+Louisville	Louisville	louisville	Cardinals	aac	
+Memphis	Memphis	memphis	Tigers	aac	
+Rutgers	Rutgers	rutgers	Scarlet Knights	aac	
+South Florida	South Florida	usf	Bulls	aac	
+Southern Methodist	SMU	smu	Mustangs	aac	
+Temple	Temple	temple	Owls	aac	
+East Carolina	East Carolina	ecu	Pirates	cusa	East
+Florida Atlantic	Florida Atlantic	fau	Owls	cusa	East
+Florida International	Florida International	fiu	Panthers	cusa	East
+Louisiana Tech	Louisiana Tech	latech	Bulldogs	cusa	West
+Marshall	Marshall	marshall	Thundering Herd	cusa	East
+Middle Tennessee State	Middle Tennessee	mtsu	Blue Raiders	cusa	East
+North Texas	North Texas	northtexas	Mean Green	cusa	West
+Rice	Rice	rice	Owls	cusa	West
+Southern Mississippi	Southern Miss	usm	cusa	East
+Tulane	Tulane	tulane	Green Wave	cusa	West
+Tulsa	Tulsa	tulsa	Golden Hurricane	cusa	West
+Alabama-Birmingham	UAB	uab	Blazers	cusa	East
+Texas-El Paso	UTEP	utep	Miners	cusa	West
+UT-San Antonio	UT-San Antonio	utsa	Roadrunners	cusa	West
+Arkansas State	Arkansas State	arkansasstate	Red Wolves	sunbelt	
+Arkansas-Little Rock	Arkansas-Little Rock	arkansaslittlerock	Trojans	sunbelt	
+Georgia State	Georgia State	georgiastate	Panthers	sunbelt	
+Louisiana-Lafayette	UL-Lafayette	ullafayette	Ragin' Cajuns	sunbelt	
+Louisiana-Monroe	UL-Monroe	ulmonroe	Warhawks	sunbelt	
+South Alabama	South Alabama	southalabama	Jaguars	sunbelt	
+Texas State	Texas State	texasstate	Bobcats	sunbelt	
+UT-Arlington	UT-Arlington	utarlington	Mavericks	sunbelt	
+Troy	Troy	troy	Trojans	sunbelt	
+Western Kentucky	Western Kentucky	westernkentucky	Hilltoppers	sunbelt	
+Notre Dame	Notre Dame	notredame	Fighting Irish	ind	
+Army	Army	army	Black Knights	ind	
+Navy	Navy	navy	Midshipmen	ind	
+Brigham Young	BYU	byu	Cougars	ind	
+Old Dominion	Old Dominion	olddominion	Monarchs	ind	
+Presbyterian	Presbyterian	presbyterian	Blue Hose	bigsouth	
+Elon	Elon	elon	Phoenix	socon	
+North Carolina Central	NC Central	nccu	Eagles	meac	

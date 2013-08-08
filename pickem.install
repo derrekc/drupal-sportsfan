@@ -6,6 +6,55 @@
  * Window - Preferences - PHPeclipse - PHP - Code Templates
  */
 
+/**
+ * Implements hook_install
+ */
+function pickem_install() {
+	variable_set('pickem.default_conference', 'acc');
+	variable_set('pickem.current_season', 2013);
+
+	_pickem_load_schools();
+	_pickem_load_initial_games();
+}
+
+function _pickem_load_schools() {
+	$file = drupal_get_path('module', 'pickem') . '/schools.tsv';
+	if (($handle = fopen($file, 'r')) !== FALSE) {
+		while (($data = fgetcsv($handle, 90, "\t"))) {
+			$o = new stdClass();
+			$o->title = $data[0];
+			$o->displaytitle = $data[1];
+			$o->machine_name = $data[2];
+			$o->nickname = $data[3];
+			$o->conf_name = strtotime($data[4]);
+			$o->conf_division = $data[5];
+			drupal_write_record('school', $o);
+		}
+	}
+	fclose($handle);
+	}
+
+function _pickem_load_initial_games() {
+	$file = drupal_get_path('module', 'pickem') . '/games.tsv';
+	if (($handle = fopen($file, 'r')) !== FALSE) {
+		while (($data = fgetcsv($handle, 90, "\t"))) {
+			$o = new stdClass();
+			$o->week = $data[0];
+			$o->season = $data[1];
+			$o->visiting_school_name = $data[2];
+			$o->host_school_name = $data[3];
+			$o->game_date = strtotime($data[4]);
+			$o->location = $data[5];
+			$o->neutral = $data[6] == 'neutral' ? 'Y' : 'N';
+			drupal_write_record('game', $o);
+		}
+	}
+	fclose($handle);
+}
+/**
+ * Implements hook_schema
+ * @return array
+ */
 function pickem_schema() {
 	return array(
 		'school' => array(
@@ -39,7 +88,7 @@ function pickem_schema() {
 					'length' => 35,
 					'default' => '',
 				),
-				'conf_id' => array(
+				'conf_name' => array(
 					'type' => 'varchar',
 					'length' => '15',
 					'not null' => TRUE,
@@ -79,7 +128,14 @@ function pickem_schema() {
 				'correct' => array(
 					'type' => 'char',
 					'size' => 1,
-				)
+				),
+				'week' => array(
+					'type' => 'int',
+					'size' => 'tiny',
+					'unsigned' => TRUE,
+					'not null' => TRUE,
+					'default' => 0,
+				),
 			),
 			'primary key' => array('pid'),
 			'foreign keys' => array(
@@ -132,6 +188,13 @@ function pickem_schema() {
 					'not null' => FALSE,
 					'default' => 0,
 				),
+				'week' => array(
+					'type' => 'int',
+					'size' => 'tiny',
+					'unsigned' => TRUE,
+					'not null' => TRUE,
+					'default' => 0,
+				),
 				'season' => array(
 					'type' => 'int',
 					'not null' => TRUE,
@@ -162,6 +225,24 @@ function pickem_schema() {
 					'size' => 'tiny',
 					'unsigned' => TRUE,
 					'default' => NULL,
+				),
+				'neutral' => array(
+					'type' => 'char',
+					'size' => 1,
+					'not null' => TRUE,
+					'default' => 'N',
+				),
+				'sport' => array(
+					'type' => 'varchar',
+					'size' => 12,
+					'not null' => TRUE,
+					'default' => '',
+				),
+				'complete' => array(
+					'type' => 'char',
+					'size' => 1,
+					'not null' => TRUE,
+					'default' => 'N',
 				),
 			),
 			'primary key' => array('gid'),

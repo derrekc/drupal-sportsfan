@@ -239,6 +239,10 @@ function pickem_schema() {
 					'not null' => TRUE,
 					'default' => '',
 				),
+				'betting_line' => array(
+					'type' => 'varchar',
+					'length' => '20',
+				),
 				'complete' => array(
 					'type' => 'char',
 					'size' => 1,

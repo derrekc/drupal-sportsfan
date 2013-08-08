@@ -18,7 +18,7 @@ function pickem_install() {
 }
 
 function _pickem_load_schools() {
-	$file = drupal_get_path('module', 'pickem') . '/schools.tsv';
+	$file = drupal_get_path('module', 'pickem') . '/data/schools.tsv';
 	if (($handle = fopen($file, 'r')) !== FALSE) {
 		while (($data = fgetcsv($handle, 90, "\t"))) {
 			$o = new stdClass();
@@ -35,7 +35,7 @@ function _pickem_load_schools() {
 	}
 
 function _pickem_load_initial_games() {
-	$file = drupal_get_path('module', 'pickem') . '/games.tsv';
+	$file = drupal_get_path('module', 'pickem') . '/data/games.tsv';
 	if (($handle = fopen($file, 'r')) !== FALSE) {
 		while (($data = fgetcsv($handle, 90, "\t"))) {
 			$o = new stdClass();

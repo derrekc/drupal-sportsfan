@@ -76,6 +76,10 @@ function pickem_schema() {
 					'length' => 35,
 					'default' => NULL,
 				),
+				'correct' => array(
+					'type' => 'char',
+					'size' => 1,
+				)
 			),
 			'primary key' => array('pid'),
 			'foreign keys' => array(

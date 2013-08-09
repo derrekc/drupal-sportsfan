@@ -15,6 +15,7 @@ function pickem_menu() {
 			'weight' => -5,
 			'page callback' => 'system_admin_menu_block_page',
 			'access arguments' => array('administer pickem settings'),
+			'access callback' => TRUE,
 			'file' => 'system.admin.inc',
 			'file path' => drupal_get_path('module', 'system'),
 		),
@@ -22,12 +23,14 @@ function pickem_menu() {
 			'title' => 'Games Management',
 			'page callback' => 'pickem_admin_games',
 			'access arguments' => array('administer pickem settings', 'administer pickem games'),
+			'access callback' => TRUE,
 			'type' => MENU_NORMAL_ITEM,
 		),
 		'admin/config/pickem/games/%' => array(
 			'page callback' => 'drupal_get_form',
 			'page arguments' => array('pickem_games_admin_form', 3),
 			'access arguments' => array('administer pickem games'),
+			'access callback' => TRUE,
 		)
 	);
 }

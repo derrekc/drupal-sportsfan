@@ -56,6 +56,13 @@ function pickem_games_admin($form, &$form_state, $week) {
 		kpr($record);
 	}
 
+	/*
+	$form['slate'] = array(
+		'#theme' => 'table',
+		'#headers' => 
+		
+	)
+	*/
 	return $form;
 }
 

@@ -37,7 +37,11 @@ function pickem_menu() {
 function pickem_games_admin($form, &$form_state, $week) {
 	$query = db_select('slate', 's');
 	$query->join('game', 'g', 's.gid = g.gid');
+	$query->join('school', 'host', 'g.host_school_name = host.machine_name');
+	$query->join('school', 'visiting', 'g.visting_school_name = visiting.machine_name');
 	$query->fields('g', array('host_school_name', 'visiting_school_name', 'game_date'));
+	$query->fields('host', array('title'));
+	$query->fields('visiting', array('title'));
 	$query->orderBy('game_date');
 	$query->condition('slate_id', $week);
 	$result = $query->execute();

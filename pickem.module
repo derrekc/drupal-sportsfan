@@ -40,10 +40,10 @@ function pickem_games_admin($form, &$form_state, $week) {
 	$query->join('school', 'host', 'g.host_school_name = host.machine_name');
 	$query->join('school', 'visiting', 'g.visiting_school_name = visiting.machine_name');
 	
-	$query->fields('g', array('host_school_name', 'visiting_school_name', 'game_date'))
-	->fields('host', array('title'))
-	->fields('visiting', array('title'))
-	->orderBy('game_date')
+	$query->fields('g', array('host_school_name', 'visiting_school_name', 'game_date'));
+	$query->addField('host', 'title', 'host_school');
+	$query->addField('visiting', 'title', 'visiting_school');
+	$query->orderBy('game_date')
 	->condition('slate_id', $week);
 	$result = $query->execute();
 	while($record = $result->fetchObject()) {

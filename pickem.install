@@ -57,7 +57,7 @@ function _pickem_load_initial_games($fname) {
 			$o->host_school_name = $data[3];
 			$o->sport = 'ncaaf';
 			
-			$date = new DateTime($date[4]);
+			$date = new DateTime($data[4]);
 			$o->game_date = $date->getTimestamp();
 			
 			$o->location = $data[5];

@@ -38,7 +38,8 @@ function pickem_games_admin($form, &$form_state, $week) {
 	$query = db_select('slate', 's');
 	$query->join('game', 'g', 's.gid = g.gid');
 	$query->fields('g', array('host_school_name', 'visiting_school_name', 'game_date'));
-	$order->orderBy('game_date');
+	$query->orderBy('game_date');
+	$query->condition('slate_id', $week);
 	$result = $query->execute();
 	while($record = $result->fetchObject()) {
 		kpr($record);

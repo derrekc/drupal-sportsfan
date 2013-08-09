@@ -61,7 +61,7 @@
 2013	10	northcarolina	ncstate	11/2/13	Raleigh, NC	
 2013	13	eastcarolina	ncstate	11/23/13	Raleigh, NC	
 2013	14	maryland	ncstate	11/30/13	Raleigh, NC	
-2013	1	northcarolina	southcarolina	8/31/13 6:00 PM	Columbia, SC	
+2013	1	northcarolina	southcarolina	8/29/13 6:00 PM	Columbia, SC	
 2013	2	middletennessee	northcarolina	9/7/13 12:30 PM	Chapel Hill, NC	
 2013	5	eastcarolina	northcarolina	9/28/13	Chapel Hill, NC	
 2013	8	miami	northcarolina	10/17/13 7:30 PM	Chapel Hill, NC	
@@ -93,6 +93,14 @@
 2013	9	georgiatech	virginia	10/26/13	Charlottesville, VA	
 2013	10	clemson	virginia	11/2/13	Charlottesville, VA	
 2013	14	vatech	virginia	11/30/13	Charlottesville, VA	
+2013	1	alabama	vatech	8/31/13 5:30 PM	Atlanta, GA	neutral	Chick Fil-A Kickoff Classic
+2013	2	westerncarolina	vatech	9/7/13 1:30 PM	Blacksburg, VA	
+2013	3	vatech	eastcarolina	9/14/13 12:00 PM	Greenville, NC	
+2013	4	marshall	vatech	9/21/13	Blacksburg, VA	
+2013	6	northcarolina	vatech	10/5/13	Blacksburg, VA	
+2013	7	pitt	vatech	10/12/13	Blacksburg, VA	
+2013	9	duke	vatech	10/26/13	Blacksburg, VA	
+2013	12	maryland	vatech	11/16/13	Blacksburg, VA	
 2013	1	presbyterian	wakeforest	8/31/13 6:30 PM	Winston-Salem, NC	
 2013	3	ulmonroe	wakeforest	9/14/13 12:30 PM	Winston-Salen, NC	
 2013	4	wakeforest	army	9/21/13 12:00 PM	West Point, NY	
@@ -101,3 +109,4 @@
 2013	11	fsu	wakeforest	11/9/13	Winston-Salem, NC	
 2013	13	duke	wakeforest	11/23/13	Winston-Salem, NC	
 2013	14	wakeforest	vanderbilt	11/30/13	Winston-Salem, NC	
+2013	15			12/7/13 7:45 PM	Charlotte, NC	neutral	ACC Championship Game

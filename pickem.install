@@ -13,11 +13,20 @@ function pickem_install() {
 	variable_set('pickem.default_conference', 'acc');
 	variable_set('pickem.current_season', 2013);
 
+	# temporarily store the schools as they are added to the database
+	# as we'll need to access data when adding games
+	$tmp_school = array();
+	
 	_pickem_load_schools();
-	_pickem_load_initial_games();
+	
+	foreach(array('acc','sec') as $conf) {
+			$filename = $conf.'games.tsv';
+			_pickem_load_initial_games($filename);
+	}
 }
 
 function _pickem_load_schools() {
+	global $tmp_school;
 	$file = drupal_get_path('module', 'pickem') . '/data/schools.tsv';
 	if (($handle = fopen($file, 'r')) !== FALSE) {
 		while (($data = fgetcsv($handle, 90, "\t"))) {
@@ -29,13 +38,16 @@ function _pickem_load_schools() {
 			$o->conf_name = strtotime($data[4]);
 			$o->conf_division = $data[5];
 			drupal_write_record('school', $o);
+			$tmp_school[$o->machine_name] = $o;
 		}
 	}
 	fclose($handle);
-	}
+}
 
-function _pickem_load_initial_games() {
-	$file = drupal_get_path('module', 'pickem') . '/data/accgames.tsv';
+function _pickem_load_initial_games($fname) {
+	global $tmp_school;
+	
+	$file = drupal_get_path('module', 'pickem') . '/data/' . $fname;
 	if (($handle = fopen($file, 'r')) !== FALSE) {
 		while (($data = fgetcsv($handle, 90, "\t"))) {
 			$o = new stdClass();
@@ -46,8 +58,26 @@ function _pickem_load_initial_games() {
 			$o->sport = 'ncaaf';
 			$o->game_date = strtotime($data[4]);
 			$o->location = $data[5];
+			$o->host_conf_name = $tmp_school[$data[3]]->conf_name;
 			$o->neutral = $data[6] == 'neutral' ? 'Y' : 'N';
+			if (isset($data[7])) {
+				# game title
+				$o->title = $data[7];
+			}
 			drupal_write_record('game', $o);
+			
+			// if the game includes schools from the 'default conference'
+			// automatically add them to the slate of games
+			$default_conf = variable_get('pickem.default_conference','');
+			if ($tmp_school[$data[2]]->conf_name == $default_conf ||
+					$tmp_school[$data[3]]->conf_name == $default_conf) {
+				
+				$s = new stdClass();
+				$s->slate_id = $o->week;
+				$s->gid = $o->gid;
+				$s->season = $o->season;
+				drupal_write_record('slate', $s);
+			}
 		}
 	}
 	fclose($handle);
@@ -107,7 +137,38 @@ function pickem_schema() {
 					'default' => 1,
 				),
 			),
+			'indexes' => array(
+				'machine_name' => array(arrray('machine_name', 5)),
+				'conf_name' => array(array('conf_name', 3)),		
+			),
 			'primary key' => array('sid'),
+		),
+		'slate' => array(
+			'fields' => array(
+				'season' => array(
+					'type' => 'int',
+					'size' => 'small',
+				),
+				'gid' => array(
+					'type' => 'int',
+					'unsigned' => TRUE,
+					'not null' => TRUE,
+					'default' => 0,
+				),
+				'slate_id' => array(
+					'type' => 'int',
+					'unsigned' => TRUE,
+					'not null' => TRUE,
+					'default' => 0,
+				),
+			),
+			'primary key' => array('slate_id', 'gid'),
+			'foreign keys' => array(
+				'game' => array(
+					'table' => 'game',
+					'columns' => array('gid' => 'gid'),
+				),
+			),
 		),
 		'pick' => array(
 			'fields' => array(
@@ -184,6 +245,10 @@ function pickem_schema() {
 					'unsigned' => TRUE,
 					'not null' => TRUE
 				),
+				'title' => array(
+					'type' => 'title',
+					'length' => 255,
+				),
 				'game_date' => array(
 					'type' => 'int',
 					'not null' => FALSE,
@@ -204,12 +269,10 @@ function pickem_schema() {
 				'host_school_name' => array(
 					'type' => 'varchar',
 					'length' => 35,
-					'not null' => TRUE,
 				),
 				'visiting_school_name' => array(
 					'type' => 'varchar',
 					'length' => 35,
-					'not null' => TRUE,
 				),
 				'host_score' => array(
 					'type' => 'int',
@@ -226,6 +289,10 @@ function pickem_schema() {
 					'size' => 'tiny',
 					'unsigned' => TRUE,
 					'default' => NULL,
+				),
+				'host_conf_name' => array(
+					'type' => 'varchar',
+					'length' => 15,
 				),
 				'neutral' => array(
 					'type' => 'char',
@@ -249,6 +316,12 @@ function pickem_schema() {
 					'not null' => TRUE,
 					'default' => 'N',
 				),
+			),
+			'indexes' => array(
+				'host_school' => array(array('host_school_name', 5)),
+				'visiting_school' => array(array('visiting_school_name', 5)),
+				'winning_school' => array(array('winning_school_name', 5)),
+				'sport' => array(array('sport', 5)),	
 			),
 			'primary key' => array('gid'),
 			'foreign keys' => array(

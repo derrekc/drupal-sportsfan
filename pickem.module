@@ -21,6 +21,7 @@ function pickem_menu() {
 		),
 		'admin/config/pickem/games' => array(
 			'title' => 'Games Management',
+			'page callback' => 'drupal_get_form',
 			'page arguments' => array('pickem_admin_games'),
 			'access arguments' => array('administer pickem settings', 'administer pickem games'),
 			'access callback' => TRUE,

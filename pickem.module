@@ -6,6 +6,10 @@
  * Window - Preferences - PHPeclipse - PHP - Code Templates
  */
 
+function pickem_init() {
+	
+}
+
 function pickem_menu() {
 	return array(
 		'admin/config/pickem' => array(
@@ -31,11 +35,15 @@ function pickem_menu() {
 }
 
 function pickem_games_admin($form, &$form_state, $week) {
-	$form['caption'] = array(
-		'#type' => 'markup',
-		'#markup' => t('Well well') . print_r($week, TRUE),
-	);
-	$form['#submit'][] = 'pickem_games_admin_submit';
+	$query = db_select('slate', 's');
+	$query->join('game', 'g', 's.gid = g.gid');
+	$query->fields('g', array('host_school_name', 'visiting_school_name', 'game_date'));
+	$order->orderBy('game_date');
+	$result = $query->execute();
+	while($record = $result->fetchObject()) {
+		kpr($record);
+	}
+
 	return $form;
 }
 

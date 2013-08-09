@@ -30,15 +30,12 @@ function pickem_menu() {
 	);
 }
 
-function pickem_games_admin($week) {
-	$form['form'] = array(
-		'#type' => 'form',
-		'#submit' => array('pickem_games_admin_submit'),
-	);
-	$form['form']['caption'] = array(
+function pickem_games_admin($form, &$form_state, $week) {
+	$form['caption'] = array(
 		'#type' => 'markup',
 		'#markup' => t('Well well') . print_r($week, TRUE),
 	);
+	$form['#submit'][] = 'pickem_games_admin_submit';
 	return $form;
 }
 

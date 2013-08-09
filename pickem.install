@@ -35,18 +35,18 @@ function _pickem_load_schools() {
 	}
 
 function _pickem_load_initial_games() {
-	$file = drupal_get_path('module', 'pickem') . '/data/games.tsv';
+	$file = drupal_get_path('module', 'pickem') . '/data/accgames.tsv';
 	if (($handle = fopen($file, 'r')) !== FALSE) {
 		while (($data = fgetcsv($handle, 90, "\t"))) {
 			$o = new stdClass();
-			$o->week = $data[0];
-			$o->season = $data[1];
+			$o->season = $data[0];
+			$o->week = $data[1];
 			$o->visiting_school_name = $data[2];
 			$o->host_school_name = $data[3];
-			$o->sport = $data[4];
-			$o->game_date = strtotime($data[5]);
-			$o->location = $data[6];
-			$o->neutral = $data[7] == 'neutral' ? 'Y' : 'N';
+			$o->sport = 'ncaaf';
+			$o->game_date = strtotime($data[4]);
+			$o->location = $data[5];
+			$o->neutral = $data[6] == 'neutral' ? 'Y' : 'N';
 			drupal_write_record('game', $o);
 		}
 	}

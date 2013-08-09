@@ -36,7 +36,10 @@ function pickem_menu() {
 }
 
 function pickem_games_admin_form($week) {
-	return '<h2>' . $week . '</h2>';	
+	$form['caption'] = array(
+		'#type' => 'markup',
+		'#markup' => t($week),
+	);
 }
 
 function pickem_permission() {

@@ -37,7 +37,7 @@ function pickem_games_admin($week) {
 	);
 	$form['form']['caption'] = array(
 		'#type' => 'markup',
-		'#markup' => t('Well well'),
+		'#markup' => t('Well well') . print_r($week, TRUE),
 	);
 	return $form;
 }

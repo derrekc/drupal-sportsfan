@@ -39,13 +39,20 @@ function pickem_games_admin($form, &$form_state, $week) {
 	$query->join('game', 'g', 's.gid = g.gid');
 	$query->join('school', 'host', 'g.host_school_name = host.machine_name');
 	$query->join('school', 'visiting', 'g.visiting_school_name = visiting.machine_name');
-	$query->fields('g', array('host_school_name', 'visiting_school_name', 'game_date'));
-	$query->fields('host', array('title'));
-	$query->fields('visiting', array('title'));
-	$query->orderBy('game_date');
-	$query->condition('slate_id', $week);
+	
+	$query->fields('g', array('host_school_name', 'visiting_school_name', 'game_date'))
+	->fields('host', array('title'));
+	->fields('visiting', array('title'));
+	->orderBy('game_date');
+	->condition('slate_id', $week);
 	$result = $query->execute();
 	while($record = $result->fetchObject()) {
+		$record->game_date_str = date('M j, Y');
+		$record->kickoff_time = date('g:i A');
+		if ($record->kickoff_time == '12:00 AM') {
+			$record->kickoff_time = 'TBA';
+		}
+		$record->game_day = date('l');
 		kpr($record);
 	}
 

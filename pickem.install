@@ -138,7 +138,7 @@ function pickem_schema() {
 				),
 			),
 			'indexes' => array(
-				'machine_name' => array(arrray('machine_name', 5)),
+				'machine_name' => array(array('machine_name', 5)),
 				'conf_name' => array(array('conf_name', 3)),		
 			),
 			'primary key' => array('sid'),

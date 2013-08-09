@@ -7,9 +7,48 @@
  */
 
 function pickem_menu() {
-	return array();
+	return array(
+		'admin/config/pickem' => array(
+			'title' => 'Pickem Administration',
+			'description' => 'Adjust settings for your Pickem environment',
+			'position' => 'right',
+			'weight' => -5,
+			'page callback' => 'system_admin_menu_block_page',
+			'access arguments' => array('administer pickem settings'),
+			'file' => 'system.admin.inc',
+			'file path' => drupal_get_path('module', 'system'),
+		),
+		'admin/config/pickem/games' => array(
+			'title' => 'Games Management',
+			'page callback' => 'pickem_admin_games',
+			'access arguments' => array('administer pickem settings', 'administer pickem games'),
+			'type' => MENU_NORMAL_ITEM,
+		),
+		'admin/config/pickem/games/%' => array(
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('pickem_games_admin_form', 3),
+			'access arguments' => array('administer pickem games'),
+		)
+	);
 }
 
+function pickem_games_admin_form($week) {
+	return '<h2>' . $week . '</h2>';	
+}
+
+function pickem_permission() {
+	return array(
+		'administer pickem settings' => array(
+			'title' => t('Administer Pickem Setttings'),
+			'description' => t('Perform administration tasks on Pickem settings'),
+		),
+		'administer pickem games' => array(
+			'title' => t('Administer Pickem Games'),
+			'description' => t('Perform administration tasks on Pickem games'),
+		),
+	);
+}
+ 
 function pickem_block_info($delta='') {
 	return array();
 }

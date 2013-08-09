@@ -35,7 +35,7 @@ function _pickem_load_schools() {
 			$o->displaytitle = $data[1];
 			$o->machine_name = $data[2];
 			$o->nickname = $data[3];
-			$o->conf_name = strtotime($data[4]);
+			$o->conf_name = $data[4];
 			$o->conf_division = $data[5];
 			drupal_write_record('school', $o);
 			$tmp_school[$o->machine_name] = $o;

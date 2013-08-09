@@ -21,21 +21,15 @@ function pickem_menu() {
 		),
 		'admin/config/pickem/games' => array(
 			'title' => 'Games Management',
-			'page callback' => 'pickem_admin_games',
+			'page arguments' => array('pickem_admin_games'),
 			'access arguments' => array('administer pickem settings', 'administer pickem games'),
 			'access callback' => TRUE,
 			'type' => MENU_NORMAL_ITEM,   
 		),
-		'admin/config/pickem/games/%/view' => array(
-			'page callback' => 'drupal_get_form',
-			'page arguments' => array('pickem_games_admin_form', 4),
-			'access arguments' => array('administer pickem games'),
-			'access callback' => TRUE,
-		)
 	);
 }
 
-function pickem_games_admin_form($week) {
+function pickem_games_admin($week) {
 	$form['caption'] = array(
 		'#type' => 'markup',
 		'#markup' => t($week),

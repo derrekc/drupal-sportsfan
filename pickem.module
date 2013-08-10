@@ -31,12 +31,18 @@ function pickem_menu() {
 			'access callback' => TRUE,
 			'type' => MENU_NORMAL_ITEM,   
 		),
+		'admin/config/pickem/games/%pickem_game/edit' => array(
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('pickem_game_edit', 4),
+			'access callback' => TRUE,
+			'type' => MENU_CALLBACK,
+		),
 	);
 }
 
 function pickem_games_admin($form, &$form_state, $week) {
-	$query = db_select('slate', 's');
-	$query->join('game', 'g', 's.gid = g.gid');
+	$query = db_select('game', 'g')->extend('PagerDefault')->extend('TableSort');
+	#$query->join('game', 'g', 's.gid = g.gid');
 	$query->join('school', 'host', 'g.host_school_name = host.machine_name');
 	$query->join('school', 'visiting', 'g.visiting_school_name = visiting.machine_name');
 	
@@ -44,7 +50,7 @@ function pickem_games_admin($form, &$form_state, $week) {
 	$query->addField('host', 'title', 'host_school');
 	$query->addField('visiting', 'title', 'visiting_school');
 	$query->orderBy('game_date')
-	->condition('slate_id', $week);
+	->condition('week', $week);
 	$result = $query->execute();
 	
 	$rows = array();

@@ -41,6 +41,8 @@ function pickem_menu() {
 }
 
 function pickem_games_admin($form, &$form_state, $week) {
+	drupal_add_library('system', 'drupal.ajax');
+	
 	$query = db_select('game', 'g')->extend('PagerDefault')->extend('TableSort');
 	#$query->join('game', 'g', 's.gid = g.gid');
 	$query->join('school', 'host', 'g.host_school_name = host.machine_name');
@@ -72,7 +74,8 @@ function pickem_games_admin($form, &$form_state, $week) {
 		$game_title .= $record->host_school;
 		$rows[] = array(
 			'',
-			l($game_title, 'admin/config/pickem/game/' . $record->gid . '/edit'),
+			l($game_title, 'admin/config/pickem/game/' . $record->gid . '/edit', 
+				array('attributes' => array('class' => array('use-ajax')))),
 			$record->game_date_str,
 			$record->game_day,
 			$record->kickoff_time,

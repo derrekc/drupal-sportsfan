@@ -61,8 +61,8 @@ function pickem_games_admin($form, &$form_state, $week) {
 			'',
 			$record->visiting_school,
 			$record->host_school,
-			$record->game_date,
-			$record->game_day_str,
+			$record->game_day,
+			$record->game_date_str,
 			$record->kickoff_time,
 			'',
 		);

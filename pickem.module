@@ -40,7 +40,7 @@ function pickem_games_admin($form, &$form_state, $week) {
 	$query->join('school', 'host', 'g.host_school_name = host.machine_name');
 	$query->join('school', 'visiting', 'g.visiting_school_name = visiting.machine_name');
 	
-	$query->fields('g', array('host_school_name', 'visiting_school_name', 'game_date'));
+	$query->fields('g', array('host_school_name', 'visiting_school_name', 'game_date', 'neutral'));
 	$query->addField('host', 'title', 'host_school');
 	$query->addField('visiting', 'title', 'visiting_school');
 	$query->orderBy('game_date')
@@ -61,8 +61,8 @@ function pickem_games_admin($form, &$form_state, $week) {
 			'',
 			$record->visiting_school,
 			$record->host_school,
-			$record->game_date_str,
-			$record->game_day,
+			$record->game_date,
+			$record->game_day_str,
 			$record->kickoff_time,
 			'',
 		);
@@ -72,15 +72,15 @@ function pickem_games_admin($form, &$form_state, $week) {
 	$headers = array('',
 		array('data' => t('Visitor'), 'field' => 'visiting.title'),
 		array('data' => t('Host'), 'field' => 'host.title'),
-		t('Date'),
 		t('Day'),
+		t('Date'),
 		t('Kickoff Time'),
 		t('Options'),
 	);
 	
 	$form['slate'] = array(
 		'#theme' => 'table',
-		'#headers' => $headers,
+		'#header' => $headers,
 		'#rows' => $rows,
 	);
 	

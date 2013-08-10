@@ -40,7 +40,7 @@ function pickem_games_admin($form, &$form_state, $week) {
 	$query->join('school', 'host', 'g.host_school_name = host.machine_name');
 	$query->join('school', 'visiting', 'g.visiting_school_name = visiting.machine_name');
 	
-	$query->fields('g', array('host_school_name', 'visiting_school_name', 'game_date', 'neutral'));
+	$query->fields('g', array('gid', 'host_school_name', 'visiting_school_name', 'game_date', 'neutral'));
 	$query->addField('host', 'title', 'host_school');
 	$query->addField('visiting', 'title', 'visiting_school');
 	$query->orderBy('game_date')
@@ -57,12 +57,18 @@ function pickem_games_admin($form, &$form_state, $week) {
 		}
 		$record->game_day = date('l', $record->game_date);
 
+		$game_title = $record->visiting_school;
+		if ($record->neutral) {
+			$game_title .= ' vs ';
+		} else {
+			$game_title .= ' at ';
+		}
+		$game_title .= $record->host_school;
 		$rows[] = array(
 			'',
-			$record->visiting_school,
-			$record->host_school,
-			$record->game_day,
+			l($game_title, 'admin/config/pickem/game/' . $record->gid . '/edit'),
 			$record->game_date_str,
+			$record->game_day,
 			$record->kickoff_time,
 			'',
 		);
@@ -70,10 +76,9 @@ function pickem_games_admin($form, &$form_state, $week) {
 	}
 
 	$headers = array('',
-		array('data' => t('Visitor'), 'field' => 'visiting.title'),
-		array('data' => t('Host'), 'field' => 'host.title'),
-		t('Day'),
+		t('Game'),
 		t('Date'),
+		t('Day'),
 		t('Kickoff Time'),
 		t('Options'),
 	);

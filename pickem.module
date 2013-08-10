@@ -46,6 +46,9 @@ function pickem_games_admin($form, &$form_state, $week) {
 	$query->orderBy('game_date')
 	->condition('slate_id', $week);
 	$result = $query->execute();
+	
+	$rows = array();
+	
 	while($record = $result->fetchObject()) {
 		$record->game_date_str = date('M j, Y', $record->game_date);
 		$record->kickoff_time = date('g:i A', $record->game_date);
@@ -53,16 +56,34 @@ function pickem_games_admin($form, &$form_state, $week) {
 			$record->kickoff_time = 'TBA';
 		}
 		$record->game_day = date('l', $record->game_date);
-		kpr($record);
+
+		$rows[] = array(
+			'',
+			$record->visiting_school,
+			$record->host_school,
+			$record->game_date_str,
+			$record->game_day,
+			$record->kickoff_time,
+			'',
+		);
+		#kpr($record);
 	}
 
-	/*
+	$headers = array('',
+		array('data' => t('Visitor'), 'field' => 'visiting.title'),
+		array('data' => t('Host'), 'field' => 'host.title'),
+		t('Date'),
+		t('Day'),
+		t('Kickoff Time'),
+		t('Options'),
+	);
+	
 	$form['slate'] = array(
 		'#theme' => 'table',
-		'#headers' => 
-		
-	)
-	*/
+		'#headers' => $headers,
+		'#rows' => $rows,
+	);
+	
 	return $form;
 }
 

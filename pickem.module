@@ -45,8 +45,8 @@ function pickem_games_admin($form, &$form_state, $week) {
 	
 	$query = db_select('game', 'g')->extend('PagerDefault')->extend('TableSort');
 	#$query->join('game', 'g', 's.gid = g.gid');
-	$query->join('school', 'host', 'g.host_school_name = host.machine_name');
-	$query->join('school', 'visiting', 'g.visiting_school_name = visiting.machine_name');
+	$query->join('school', 'host', 'g.host_school_name = host.name');
+	$query->join('school', 'visiting', 'g.visiting_school_name = visiting.name');
 	
 	$query->fields('g', array('gid', 'host_school_name', 'visiting_school_name', 'game_date', 'neutral'));
 	$query->addField('host', 'title', 'host_school');
@@ -72,10 +72,10 @@ function pickem_games_admin($form, &$form_state, $week) {
 			$game_title .= ' at ';
 		}
 		$game_title .= $record->host_school;
+
 		$rows[] = array(
 			'',
-			l($game_title, 'admin/config/pickem/game/' . $record->gid . '/edit', 
-				array('attributes' => array('class' => array('use-ajax')))),
+			$game_title,
 			$record->game_date_str,
 			$record->game_day,
 			$record->kickoff_time,

@@ -111,7 +111,7 @@ function pickem_schema() {
 					'not null' => TRUE,
 					'default' => '',
 				),
-				'machine_name' => array(
+				'name' => array(
 					'type' => 'varchar',
 					'length' => 35,
 					'not null' => TRUE,
@@ -141,16 +141,72 @@ function pickem_schema() {
 				),
 			),
 			'indexes' => array(
-				'machine_name' => array(array('machine_name', 5)),
+				'machine_name' => array(array('name', 5)),
 				'conf_name' => array(array('conf_name', 3)),		
 			),
 			'primary key' => array('sid'),
+		),
+		'conference' => array(
+			'fields' => array(
+				'cid' => array(
+					'type' => 'serial',
+					'unsigned' => TRUE,
+					'not null' => TRUE,
+				),
+				'name' => array(
+					'type' => 'varchar',
+					'length' => 35,
+					'not null' => TRUE,
+					'default' => '',
+				),
+				'title' => array(
+					'type' => 'varchar',
+					'length' => 128,
+					'not null' => TRUE,
+					'default' => '',
+				),
+				'displaytitle' => array(
+					'type' => 'varchar',
+					'length' => 128,
+				),
+			),
+			'primary key' => array('cid'),
+			'indexes' => array(
+				'conf_name' => array(array('name', 5)),
+			),
+		),
+		'pickem' => array(
+			'fields' => array(
+				'pid' => array(
+					'type' => 'serial',
+					'unsigned' => TRUE,
+					'not null' => TRUE,
+				),
+				'title' => array(
+					'type' => 'varchar',
+					'length' => 128,
+					'not null' => TRUE,
+					'default' => '',
+				),
+				'season' => array(
+					'type' => 'int',
+					'unsigned' => TRUE,
+					'not null' => TRUE,
+					'default' => 0,
+				),
+			),
+			'primary key' => array('pid'),
 		),
 		'slate' => array(
 			'fields' => array(
 				'season' => array(
 					'type' => 'int',
 					'size' => 'small',
+				),
+				'pid' => array(
+					'type' => 'int',
+					'unsigned' => TRUE,
+					'not null' => TRUE,
 				),
 				'gid' => array(
 					'type' => 'int',
@@ -167,6 +223,10 @@ function pickem_schema() {
 			),
 			'primary key' => array('slate_id', 'gid'),
 			'foreign keys' => array(
+				'pickem' => array(
+					'table' => 'pickem',
+					'columns' => array('pid' => 'pid'),
+				),
 				'game' => array(
 					'table' => 'game',
 					'columns' => array('gid' => 'gid'),
@@ -175,7 +235,7 @@ function pickem_schema() {
 		),
 		'pick' => array(
 			'fields' => array(
-				'pid' => array(
+				'pkid' => array(
 					'type' => 'serial',
 					'unsigned' => TRUE,
 					'not null' => TRUE,
@@ -202,7 +262,7 @@ function pickem_schema() {
 					'default' => 0,
 				),
 			),
-			'primary key' => array('pid'),
+			'primary key' => array('pkid'),
 			'foreign keys' => array(
 				'game' => array(
 					'table' => 'game',
@@ -330,15 +390,15 @@ function pickem_schema() {
 			'foreign keys' => array(
 				'host_school' => array(
 					'table' => 'school',
-					'columns' => array('host_school_name' => 'machine_name'),
+					'columns' => array('host_school_name' => 'name'),
 				),
 				'visiting_school' => array(
 					'table' => 'school',
-					'columns' => array('visiting_school_name' => 'machine_name'),
+					'columns' => array('visiting_school_name' => 'name'),
 				),
 				'winning_school' => array(
 					'table' => 'school',
-					'columns' => array('winning_school_name' => 'machine_name'),
+					'columns' => array('winning_school_name' => 'name'),
 				),
 			),
 		),

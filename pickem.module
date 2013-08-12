@@ -65,16 +65,15 @@ function pickem_menu() {
 		),
 		'admin/structure/pickem/games/week' => array(
 			'title' => 'Games, by Week',
-			'page callback' => 'pickem_games_listing',
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('pickem_games_listing'),
 			'access callback' => TRUE,
 		)
 	);
 	$result = db_query('SELECT DISTINCT week FROM {game} WHERE season = :season ORDER BY week', array(':season' => variable_get('pickem.current_season')));
 	foreach($result as $week) {
 		$items['admin/structure/pickem/games/week/' . $week->week] = array(
-			'title' => 'Week ' . $week->week,
-			'page callback' => 'drupal_get_form',
-			'page arguments' => array('pickem_games_listing', 5),
+			'title' => $week->week,
 			'access callback' => TRUE,
 			'type' => MENU_LOCAL_TASK,
 		);

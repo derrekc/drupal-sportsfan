@@ -133,6 +133,13 @@ function pickem_menu() {
 	return $items;
 }
 
+function pickem_slate_listing() {
+	if (!user_access('pickem player')) {
+		return t('<p>Please register for the Pickem competition.</p>');
+	}
+	return t('<p>Legit player or administrator.</p>');
+}
+
 function pickem_school_page_title($conf = NULL) {
 	if ($conf != NULL) {
 		$result = db_query("SELECT displaytitle FROM {conference} WHERE name = :conf", array(':conf' => $conf));

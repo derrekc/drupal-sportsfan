@@ -83,7 +83,7 @@ function pickem_menu() {
 		),
 		'schools' => array(
 			'title callback' => 'Schools',
-			'page callback' => 'pickem_schools_listing',
+			'page callback' => 'pickem_school_listing',
 			'access callback' => TRUE,
 			'file' => 'pickem.school.inc',
 		)

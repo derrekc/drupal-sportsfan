@@ -435,12 +435,13 @@ function pickem_schema() {
 /**
  * Implements hook_update_N()
  */
-function pickem_update_7110() {
+function pickem_update_7115() {
 	db_add_field('game', 'overtimes', array(
 		'type' => 'int',
 		'size' => 'tiny',
 		'default' => 0,
 	));
+	_pickem_load_conferences();
 }
 
 function pickem_update_7113() {
@@ -463,12 +464,4 @@ function _pickem_load_conferences() {
 		}
 	}
 	fclose($handle);
-}
-
-function pickem_update_7112() {
-	_pickem_load_conferences();
-}
-
-function pickem_update_7114() {
-	_pickem_load_conferences();
 }

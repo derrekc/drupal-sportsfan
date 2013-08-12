@@ -51,6 +51,13 @@ function pickem_menu() {
 			'page callback' => 'pickem_overview',
 			'access callback' => TRUE,
 		),
+		'admin/structure/pickem/schools' => array(
+			'title' => 'Schools',
+			'description' => 'List of schools',
+			'page callback' => 'pickem_school_list',
+			'access callback' => TRUE,
+			'file' => 'pickem.school.inc',
+		),
 		'admin/structure/pickem/games' => array(
 			'title' => 'Games',
 			'page callback' => 'pickem_games_listing',
@@ -86,8 +93,8 @@ function pickem_admin_access() {
 function pickem_games_admin($form, &$form_state, $week) {
 	drupal_add_library('system', 'drupal.ajax');
 	
-	#$query = db_select('game', 'g')->extend('PagerDefault')->extend('TableSort');
-	$query = db_select('game', 'g');
+	$query = db_select('game', 'g')->extend('PagerDefault')->extend('TableSort');
+	#$query = db_select('game', 'g');
 	#$query->join('game', 'g', 's.gid = g.gid');
 	$query->join('school', 'host', 'g.host_school_name = host.name');
 	$query->join('school', 'visiting', 'g.visiting_school_name = visiting.name');
@@ -96,7 +103,8 @@ function pickem_games_admin($form, &$form_state, $week) {
 	$query->addField('host', 'displaytitle', 'host_school');
 	$query->addField('visiting', 'displaytitle', 'visiting_school');
 	$query->orderBy('game_date')
-	->condition('week', $week);
+	->condition('week', $week)
+	->limit(15);
 	$result = $query->execute();
 	
 	$rows = array();
@@ -141,7 +149,9 @@ function pickem_games_admin($form, &$form_state, $week) {
 		'#header' => $headers,
 		'#rows' => $rows,
 	);
-	
+	$form['pager'] = array(
+		'#theme' => 'pager',
+	);
 	return $form;
 }
 

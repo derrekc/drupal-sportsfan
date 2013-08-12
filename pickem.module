@@ -81,6 +81,12 @@ function pickem_menu() {
 			'page arguments' => array('pickem_games_listing', 2),
 			'access callback' => TRUE,
 		),
+		'schools' => array(
+			'title callback' => 'Schools',
+			'page callback' => 'pickem_schools_listing',
+			'access callback' => TRUE,
+			'file' => 'pickem.school.inc',
+		)
 	);
 	
 	$result = db_query("SELECT name, title, displaytitle FROM conference WHERE name IN ('acc','sec','big10','big12','pac12','ind') order by name");
@@ -90,6 +96,11 @@ function pickem_menu() {
 			'page callback' => 'drupal_get_form',
 			'page arguments' => array('pickem_games_listing', 4, 5),
 			'access callback' => TRUE,
+			'type' => MENU_LOCAL_TASK,
+		);
+		$items['schools/'.$conf->name] = array(
+			'title' => $conf->displaytitle . ' Schools',
+			'page arguments' => array(1),
 			'type' => MENU_LOCAL_TASK,
 		);
 	}

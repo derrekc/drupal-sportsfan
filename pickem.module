@@ -65,7 +65,7 @@ function pickem_menu() {
 		),
 		'admin/structure/pickem/games/week' => array(
 			'title' => 'Games, by Week',
-			'page callback' => 'pickem_games_week_listing',
+			'page callback' => 'pickem_games_listing',
 			'access callback' => TRUE,
 		)
 	);
@@ -73,8 +73,10 @@ function pickem_menu() {
 	foreach($result as $week) {
 		$items['admin/structure/pickem/games/week/' . $week->week] = array(
 			'title' => 'Week ' . $week->week,
-			'page callback' => 'pickem_games_week_listing',
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('pickem_games_listing', 5),
 			'access callback' => TRUE,
+			'type' => MENU_LOCAL_TASK,
 		);
 	}
 	return $items;
@@ -95,7 +97,8 @@ function pickem_admin_access() {
 	}
 	return TRUE;
 }
-function pickem_games_admin($form, &$form_state, $week) {
+function pickem_games_listing($form, &$form_state, $week) {
+	watchdog('pickem_games', "week = [" . $week ."]");
 	drupal_add_library('system', 'drupal.ajax');
 	
 	$query = db_select('game', 'g')->extend('PagerDefault')->extend('TableSort');

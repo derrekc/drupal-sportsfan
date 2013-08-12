@@ -437,7 +437,7 @@ function pickem_update_7110() {
 
 function _pickem_load_conferences() {
 	global $tmp_school;
-	$file = drupal_get_path('module', 'pickem') . '/data/conferences.tsv';
+	$file = drupal_get_path('module', 'pickem') . '/data/conference.tsv';
 	if (($handle = fopen($file, 'r')) !== FALSE) {
 		while (($data = fgetcsv($handle, 90, "\t"))) {
 			$o = new stdClass();
@@ -450,6 +450,6 @@ function _pickem_load_conferences() {
 	fclose($handle);
 }
 
-function pickem_update_7111() {
+function pickem_update_7112() {
 	_pickem_load_conferences();
 }

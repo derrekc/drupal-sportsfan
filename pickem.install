@@ -45,7 +45,7 @@ function _pickem_load_schools() {
 			if (isset($data[6])) {
 				$o->sportsbook_name = $data[5];
 			} else {
-				$o->sportsbook_name = preg_replace('/s+/', '', $data[0]);
+				$o->sportsbook_name = preg_replace('/\s+/', '', $data[0]);
 			}
 			drupal_write_record('school', $o);
 			$tmp_school[$o->name] = $o;
@@ -467,4 +467,9 @@ function _pickem_load_conferences() {
 
 function pickem_update_7112() {
 	_pickem_load_conferences();
+}
+
+function pickem_update_7114() {
+	_pickem_load_conferences();
+}
 }

@@ -86,6 +86,7 @@ function pickem_menu() {
 			'page callback' => 'pickem_school_listing',
 			'access callback' => TRUE,
 			'file' => 'pickem.school.inc',
+			'menu_name' => 'Main menu',
 		)
 	);
 	
@@ -103,6 +104,7 @@ function pickem_menu() {
 			'title arguments' => array($conf->name),
 			'page arguments' => array(2),
 			'access callback' => TRUE,
+			'menu_name' => 'Main menu',
 			'type' => MENU_LOCAL_TASK,
 		);
 	}

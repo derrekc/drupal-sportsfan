@@ -123,8 +123,10 @@ function pickem_games_listing($form, &$form_state, $objtype = NULL, $objval = NU
 	$subquery = db_select('slate', 'sl');
 	$subquery->addField('sl', 'slate_id', 'slate_id');
 	$subquery->addField('sl', 'gid', 'slate_gid');
-	$subquery->condition('slate_id', $week);
-	
+	if ($objtype == 'week') {
+		$subquery->condition('slate_id', $objval);
+	}
+		
 	$query = db_select('game', 'g')->extend('PagerDefault')->extend('TableSort');
 	$query->leftJoin($subquery, 'sl', 'g.gid = sl.slate_gid');
 

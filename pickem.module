@@ -147,6 +147,8 @@ function pickem_games_admin($form, &$form_state, $week) {
 		}
 		$game_title .= $record->host_school;
 		$game_status = $record->completed == 'Y' ? 'F' : $record->kickoff_time;
+		$record->host_score = $record->host_score == '' ? '-' : $record->host_score;
+		$record->visiting_score = $record->visiting_score == '' ? '-' : $record->visiting_score;
 	
 		$game_classes = array();
 		if ($record->completed == 'Y') {

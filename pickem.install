@@ -44,7 +44,7 @@ function _pickem_load_schools() {
 			$o->conf_name = $data[4];
 			$o->conf_division = $data[5];
 			if (isset($data[6])) {
-				$o->sportsbook_name = $data[5];
+				$o->sportsbook_name = $data[6];
 			} else {
 				$o->sportsbook_name = preg_replace('/\s+/', '', $data[0]);
 			}

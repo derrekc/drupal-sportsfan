@@ -22,6 +22,7 @@ function pickem_install() {
 	$pickem->season = '2013';
 	drupal_write_record('pickem', $pickem);
 	
+	_pickem_load_conferences();
 	_pickem_load_schools();
 	
 	foreach(array('acc','sec') as $conf) {
@@ -49,6 +50,21 @@ function _pickem_load_schools() {
 			}
 			drupal_write_record('school', $o);
 			$tmp_school[$o->name] = $o;
+		}
+	}
+	fclose($handle);
+}
+
+function _pickem_load_conferences() {
+	global $tmp_school;
+	$file = drupal_get_path('module', 'pickem') . '/data/conference.tsv';
+	if (($handle = fopen($file, 'r')) !== FALSE) {
+		while (($data = fgetcsv($handle, 90, "\t"))) {
+			$o = new stdClass();
+			$o->name = $data[0];
+			$o->title = $data[1];
+			$o->displaytitle = $data[2];
+			drupal_write_record('conference', $o);
 		}
 	}
 	fclose($handle);
@@ -405,6 +421,11 @@ function pickem_schema() {
 					'not null' => TRUE,
 					'default' => 'N',
 				),
+				'overtimes' => array(
+					'type' => 'int',
+					'unsigned' => TRUE,
+					'size' => 'tiny',
+				),
 			),
 			'indexes' => array(
 				'host_school' => array(array('host_school_name', 5)),
@@ -430,38 +451,4 @@ function pickem_schema() {
 			),
 		),
 	);
-}
-
-/**
- * Implements hook_update_N()
- */
-function pickem_update_7115() {
-	db_add_field('game', 'overtimes', array(
-		'type' => 'int',
-		'size' => 'tiny',
-		'default' => 0,
-	));
-	_pickem_load_conferences();
-}
-
-function pickem_update_7113() {
-	db_add_field('school', 'sportsbook_id', array(
-		'type' => 'varchar',
-		'length' => '35',
-	));
-}
-
-function _pickem_load_conferences() {
-	global $tmp_school;
-	$file = drupal_get_path('module', 'pickem') . '/data/conference.tsv';
-	if (($handle = fopen($file, 'r')) !== FALSE) {
-		while (($data = fgetcsv($handle, 90, "\t"))) {
-			$o = new stdClass();
-			$o->name = $data[0];
-			$o->title = $data[1];
-			$o->displaytitle = $data[2];
-			drupal_write_record('conference', $o);
-		}
-	}
-	fclose($handle);
 }

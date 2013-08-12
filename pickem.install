@@ -81,6 +81,7 @@ function _pickem_load_initial_games($fname) {
 				$s->slate_id = $o->week;
 				$s->gid = $o->gid;
 				$s->season = $o->season;
+				watchdog('initial_games', sprintf("adding game (%s vs %s) to slate for week %d", $o->visiting_school_name, $o->host_school_name, $o->week));
 				drupal_write_record('slate', $s);
 			}
 		}

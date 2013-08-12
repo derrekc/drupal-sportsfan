@@ -143,7 +143,7 @@ function pickem_games_listing($form, &$form_state, $week = NULL) {
 		if ($record->kickoff_time == '12:00 AM') {
 			$record->kickoff_time = 'TBA';
 		}
-		$record->game_day = date('l', $record->game_date);
+		$record->game_day = date('D', $record->game_date);
 
 		$game_title = $record->visiting_school;
 		if ($record->neutral) {
@@ -155,6 +155,7 @@ function pickem_games_listing($form, &$form_state, $week = NULL) {
 		$game_status = $record->completed == 'Y' ? 'F' : $record->kickoff_time;
 		$record->host_score = $record->host_score == '' ? '-' : $record->host_score;
 		$record->visiting_score = $record->visiting_score == '' ? '-' : $record->visiting_score;
+		watchdog('games list', print_r($record, TRUE));
 	
 		$game_classes = array();
 		if ($record->completed == 'Y') {

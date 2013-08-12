@@ -13,7 +13,7 @@ function pickem_school_listing($form, &$form_state, $conf = NULL) {
 	$query = db_select('school', 's')->extend('PagerDefault')->extend('TableSort');
 	$query->join('conference', 'conf', 'conf_name = conf.name');
 	$query->fields('s');
-	$query->addField('conf', 'displaytitle', 'conf_displaytitle')
+	$query->addField('conf', 'displaytitle', 'conf_displaytitle');
 	if ($conf != NULL) {
 		$query->condition('conf_name', $conf);
 	}

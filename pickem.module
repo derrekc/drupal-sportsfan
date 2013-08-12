@@ -99,13 +99,35 @@ function pickem_games_admin($form, &$form_state, $week) {
 	$query->join('school', 'host', 'g.host_school_name = host.name');
 	$query->join('school', 'visiting', 'g.visiting_school_name = visiting.name');
 	
-	$query->fields('g', array('gid', 'host_school_name', 'host_score', 'visiting_school_name', 'visiting_score', 'game_date', 'neutral', 'completed'));
+	$query->fields('g', array(
+		'gid', 
+		'host_school_name', 
+		'host_score', 
+		'visiting_school_name', 
+		'visiting_score', 
+		'game_date', 
+		'neutral', 
+		'completed',
+		'location',
+	));
 	$query->addField('host', 'displaytitle', 'host_school');
 	$query->addField('visiting', 'displaytitle', 'visiting_school');
 	$query->orderBy('game_date')
 	->condition('week', $week)
 	->limit(15);
 	$result = $query->execute();
+
+	$headers = array(
+		t('Date'),
+		t('Day'),
+		t('Home'),
+		t('Score'),
+		t('Visitor'),
+		t('Score'),
+		t('Status'),
+		t('Location'),
+		t('Options'),
+	);
 	
 	$rows = array();
 	
@@ -140,23 +162,13 @@ function pickem_games_admin($form, &$form_state, $week) {
 				$record->visiting_school,
 				$record->visiting_score,
 				$game_status,
+				$record->location,
 				'',
 			),
 			'classes' => $game_classes,
 		);
 		#kpr($record);
 	}
-
-	$headers = array(
-		t('Date'),
-		t('Day'),
-		t('Home'),
-		t('Score'),
-		t('Visitor'),
-		t('Score'),
-		t('Status'),
-		t('Options'),
-	);
 	
 	$form['slate'] = array(
 		'#theme' => 'table',

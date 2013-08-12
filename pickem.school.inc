@@ -24,7 +24,7 @@ function pickem_school_listing($form, &$form_state, $conf = NULL) {
 	$headers = array(
 		t('Title'),
 		t('Full Title'),
-		t('System Name')
+		t('System Name'),
 		t('Conference'),
 		t('Division'),
 		t('Schedule'),

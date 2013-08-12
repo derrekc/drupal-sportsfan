@@ -33,7 +33,7 @@ function _pickem_load_schools() {
 			$o = new stdClass();
 			$o->title = $data[0];
 			$o->displaytitle = $data[1];
-			$o->machine_name = $data[2];
+			$o->name = $data[2];
 			$o->nickname = $data[3];
 			$o->conf_name = $data[4];
 			$o->conf_division = $data[5];

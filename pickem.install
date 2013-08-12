@@ -433,3 +433,23 @@ function pickem_update_7110() {
 		'default' => 0,
 	));
 }
+
+
+function _pickem_load_conferences() {
+	global $tmp_school;
+	$file = drupal_get_path('module', 'pickem') . '/data/conferences.tsv';
+	if (($handle = fopen($file, 'r')) !== FALSE) {
+		while (($data = fgetcsv($handle, 90, "\t"))) {
+			$o = new stdClass();
+			$o->name = $data[0];
+			$o->title = $data[1];
+			$o->displaytitle = $data[2];
+			drupal_write_record('conference', $o);
+		}
+	}
+	fclose($handle);
+}
+
+function pickem_update_7111() {
+	_pickem_load_conferences();
+}

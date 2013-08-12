@@ -357,6 +357,10 @@ function pickem_schema() {
 					'type' => 'varchar',
 					'length' => 15,
 				),
+				'visiting_conf_name' => array(
+					'type' => 'varchar',
+					'length' => 15,
+				),
 				'neutral' => array(
 					'type' => 'char',
 					'size' => 1,
@@ -373,7 +377,7 @@ function pickem_schema() {
 					'type' => 'varchar',
 					'length' => '20',
 				),
-				'complete' => array(
+				'completed' => array(
 					'type' => 'char',
 					'size' => 1,
 					'not null' => TRUE,

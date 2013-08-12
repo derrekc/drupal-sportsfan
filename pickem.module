@@ -129,7 +129,7 @@ function pickem_menu() {
 
 function pickem_school_page_title($conf = NULL) {
 	if ($conf) {
-		$result = db_query("SELECT displaytitle FROM {conference} WHERE conf = :conf", array(':conf' => $conf));
+		$result = db_query("SELECT displaytitle FROM {conference} WHERE name = :conf", array(':conf' => $conf));
 		$c = $result->fetchObject();
 		return $c->displaytitle;
 	}

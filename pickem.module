@@ -109,7 +109,7 @@ function pickem_games_listing($form, &$form_state, $week = NULL) {
 	$subquery->addField('sl', 'gid', 'slate_gid');
 	
 	$query = db_select('game', 'g')->extend('PagerDefault')->extend('TableSort');
-	$query->leftJoin($subquery, 'sl', 'g.gid = sl.gid');
+	$query->leftJoin($subquery, 'sl', 'g.gid = sl.slate_gid');
 
 	$query->join('school', 'host', 'g.host_school_name = host.name');
 	$query->join('school', 'visiting', 'g.visiting_school_name = visiting.name');

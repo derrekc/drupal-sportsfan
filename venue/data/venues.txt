@@ -1,0 +1,38 @@
+venue	Alumni Stadium	Chestnut Hill, MA	FieldTurf	44500		
+venue	Memorial Stadium	Clemson, SC	Grass	80301	Frank Howard Field	Death Valley
+venue	Wallace Wade Stadium	Durham, NC	Grass	33941		
+venue	Doak Campbell Stadium	Tallahassee, FL	Grass	82300	Bobby Bowden Field
+venue	Bobby Dodd Stadium at Historic Grant Field	Atlanta, GA	Grass	55000
+venue	Papa John's Cardinal Stadium	Louisville, KY	FieldTurf	55000				
+venue	Byrd Stadium	College Park, MD	FieldTurf	54000	Capital One Field	
+venue	Sun Life Stadium	Miami Gardens, FL	Grass	76500		
+venue	Kenan Memorial Stadium	Chapel Hill, NC	Grass	62980		
+venue	Carter-Finley Stadium	Raleigh, NC	Grass	57583		
+venue	Notre Dame Stadium	Notre Dame, IN	Grass	80795		
+venue	Heinz Field	Pittsburgh, PA	Grass	65050		
+venue	Carrier Dome	Syracuse, NY	FieldTurf	49262	
+venue_capacity	football	49262
+venue_capacity	basketball	33000
+venue	Bank of America Stadium	Charlotte, NC	Grass	73778			
+venue	Scott Stadium	Charlottesville, VA	Grass	61500	Carl Smith Center, Home of David A. Harrison III Field	
+venue	Lane Stadium	Blacksburg, VA	Grass	65632		
+venue	Groves Stadium	Winston-Salem, NC	FieldTurf	31500	BB&T Field	
+venue	Bryant-Denny Stadium	Tuscaloosa, AL	Grass	101821		
+venue	Jordan-Hare Stadium	Auburn, AL	Grass	87451		
+venue	Donald W. Reynolds Razorback Stadium	Fayetteville, AR	Powerblade	76000		
+venue	War Memorial Stadium	Little Rock, AR	FieldTurf	53727		
+venue	Ben Hill Griffin Stadium	Gainesville, FL	Grass	88548		The Swamp
+venue	Sanford Stadium	Athens, GA	Grass	92746		
+venue	Commonwealth Stadium	Lexington, KY	Grass	67942		
+venue	Tiger Stadium	Baton Rouge, LA	Grass	92400		Death Valley
+venue	Vaught-Hemingway Stadium	Oxford, MS	FieldTurf	60580	Hollingsworth Field	
+venue	Davis Wade Stadium	Starkville, MS	Grass	55082		
+venue	Memorial Stadium	Columbia, MO	FieldTurf	71004	Faurot Field	The Zou
+venue	Williams-Brice Stadium	Columbia, SC	Grass	80250		
+venue	Neyland Stadium	Knoxville, TN	Grass	105455		
+venue	Kyle Field	College Station, TX	Grass	82589		Home of the 12th Man
+venue	Vanderbilt Stadium	Nashville, TN	FieldTurf	40350	Dudley Field
+venue	Georgia Dome	Atlanta, GA	FieldTurf	71228		
+venue_capacity	football	71228
+venue_capacity	basketball	26000
+venue	Mercedes-Benz Superdome	New Orleans, LA	UBU Synthetic Turf	73208		The Superdome

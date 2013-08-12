@@ -1,0 +1,4 @@
+name = Athletic Venue
+description = Athletic Venue Management
+core = 7.x
+files[] = venue.module

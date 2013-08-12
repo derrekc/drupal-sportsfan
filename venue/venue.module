@@ -1,0 +1,58 @@
+<?php
+
+/**
+ * Implements hook_menu()
+ */
+function venue_menu() {
+	return array(
+		'admin/config/venues' => array(
+			'title' => t('Athletic Venue Management'),
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('venue_admin_venue_default'),
+			'access arguments' => array('administer site configuration'),
+			'file' => 'venue.admin.inc',
+		),
+		'admin/config/venues/add' => array(
+			'title' => t('Add Venue'),
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('venue_admin_venue_form'),
+			'access arguments' => array('administer site configuration'),
+			'file' => 'venue.admin.inc',
+			'type' => MENU_DEFAULT_LOCAL_TASK,
+		),
+		'admin/config/venues/edit/%venue' => array(
+			'page callback' => 'venue_admin_venue_form',
+			'file' => 'venue.admin.inc',
+		),
+		'admin/config/venues/capacity/add' => array(
+			'page callback' => 'venue_admin_venue_capacity_form',
+			'file' => 'venue.admin.inc',
+		),
+		'admin/config/venues/capacity/%venue_capacity/edit' => array(
+			'page callback' => 'venue_admin_venue_capacity_form',
+			'file' => 'venue.admin.inc',
+		),
+	);
+}
+
+function venue_load_venues($conditions = NULL) {
+	$query = db_select('venues', 'v')
+		->fields('v');
+	
+	$result = $query->execute();
+	$rows = array();
+	foreach ($result as $row) {
+		$rows[] = $row;
+	}
+	return $rows;
+}
+
+function venue_load_venue($vid) {
+	$query = db_select('venues', 'v')
+		->fields('v')
+		->condition('vid', $vid);
+		
+	$result = $query->execute();
+	$row = $result->fetchObject();
+	return $row;
+}

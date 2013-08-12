@@ -1,0 +1,152 @@
+<?php
+
+/**
+ * Implements hook_schema
+ */
+function venue_schema() {
+	$schema['venues'] = array(
+		'description' => 'Venues used by athletic entities',
+		'fields' => array(
+			'vid' => array(
+				'type'	=> 'serial',
+				'not null' => TRUE,
+				'unsigned' => TRUE,
+			),
+			'title' => array(
+				'type' => 'varchar',
+				'not null' => TRUE,
+				'length' => 128,
+				'default' => '',
+			),
+			'subtitle' => array(
+				'type' => 'varchar',
+				'length' => 128,
+			),
+			'nickname' => array(
+				'type' => 'varchar',
+				'length' => 64,
+			),
+			'location_city' => array(
+				'type' => 'varchar',
+				'length' => 64,
+				'not null' => TRUE,
+				'default' => '',
+			),
+			'location_state' => array(
+				'type' => 'char',
+				'length' => 2,
+				'not null' => TRUE,
+				'default' => '',
+			),
+			'surface' => array(
+				'type' => 'varchar',
+				'length' => 20,
+				'not null' => TRUE,
+				'default' => '',
+			),
+			'capacity' => array(
+				'description' => 'Default capacity for this venue.',
+				'type' => 'int',
+				'size' => 'medium',
+				'unsigned' => TRUE,
+				'default' => '0',
+				'not null' => TRUE,
+			),
+		),
+		'indexes' => array(
+			'venue_title' => array(array('title', 7)),
+			'capacity' => array('capacity'),
+			'location_city' => array(array('location_city', 6)),
+			'location_state' => array('location_state'),
+			'surface' => array(array('surface', '5')),
+		),
+		'primary key' => array('vid'),
+	);
+	
+	$schema['venue_capacity'] = array(
+		'description' => 'Describes a venue capacity relationship by sport',
+		'fields' => array(
+			'vcid' => array(
+				'type' => 'serial',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+			),
+			'capacity' => array(
+				'type' => 'int',
+				'size' => 'medium',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				'default' => '0',
+			),
+			'sport' => array(
+				'description' => 'football,basketball,baseball,lacrosse,soccer,hockey',
+				'type' => 'varchar',
+				'length' => 15,
+				'not null' => TRUE,
+				'default' => '',
+			),
+			'vid' => array(
+				'type' => 'int',
+				'not null' => TRUE,
+				'unsigned' => TRUE,
+				'default' => '0',
+			),
+		),
+		'indexes' => array(
+			'sport' => array(array('sport', 5))
+		),
+		'foreign keys' => array(
+			'cs_venue' => array(
+				'table' => 'cs_venue',
+				'columns' => array('vid' => 'vid')
+			),
+		),
+		'primary key' => array('vcid'),
+	);
+	
+	return $schema;
+}
+
+/**
+ * Implements hook_install()
+ */
+function venue_install() {
+	// TODO read datafile and create rows (initially for ACC venues)
+	$F = fopen(drupal_get_path('module','venue') . '/data/venues.txt', 'r');
+	$last_insert_id = FALSE;
+	while(($line = fgets($F)) !== FALSE) {
+		// split line into array (glue = tab)
+		$row = explode("\t", $line);
+		$datatype = array_shift($row);
+		
+		switch($datatype) {
+			case 'venue' : 
+				$o = new stdClass();
+				$o->title = array_shift($row);
+				$location = explode(',', array_shift($row));
+				$location[1] = preg_replace('/^\s+/', '', $location[1]);
+				$o->location_city = $location[0];
+				$o->location_state = $location[1];
+				$o->surface = array_shift($row);
+				$o->capacity = (int)array_shift($row);
+				$o->subtitle = array_shift($row);
+				$o->nickname = array_shift($row);
+				// insert row
+				drupal_write_record('venues', $o);
+				$last_insert_id = $o->vid;
+				 
+				break;
+				
+			case 'venue_capacity':
+				if ($last_insert_id)	{
+					$o = new stdClass();
+					$o->sport = array_shift($row);
+					$o->capacity = array_shift($row);
+					$o->vid = $last_insert_id;
+					drupal_write_record('venue_capacity', $o);
+				}
+				break;
+		}
+	}
+	fclose($F);
+}

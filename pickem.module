@@ -125,6 +125,11 @@ function pickem_games_admin($form, &$form_state, $week) {
 		}
 		$game_title .= $record->host_school;
 		$game_status = $record->complete == 'Y' ? 'F' : $record->kickoff_time;
+	
+		$game_classes = array();
+		if ($record->complete == 'Y') {
+			$game_classes[] = 'game-complete';
+		}
 
 		$rows[] = array(
 			'data' => array(
@@ -136,6 +141,8 @@ function pickem_games_admin($form, &$form_state, $week) {
 				$record->visiting_score,
 				$game_status,
 				'',
+			),
+			'classes' => $game_classes,
 		);
 		#kpr($record);
 	}

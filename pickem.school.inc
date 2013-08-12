@@ -7,7 +7,7 @@
  */
 
 
-function pickem_school_listing($form, &$form_state, $conf = NULL) {
+function pickem_school_listing($conf = NULL) {
 	drupal_add_library('system', 'drupal.ajax');
 
 	$query = db_select('school', 's')->extend('PagerDefault')->extend('TableSort');
@@ -45,13 +45,13 @@ function pickem_school_listing($form, &$form_state, $conf = NULL) {
 		);
 	}
 	
-	$form['slate'] = array(
+	$build['schools'] = array(
 		'#theme' => 'table',
 		'#header' => $headers,
 		'#rows' => $rows,
 	);
-	$form['pager'] = array(
+	$build['pager'] = array(
 		'#theme' => 'pager',
 	);
-	return $form;
+	return $build;
 }

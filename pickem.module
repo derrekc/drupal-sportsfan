@@ -73,7 +73,7 @@ function pickem_menu() {
 	foreach($result as $week) {
 		$items['admin/structure/pickem/games/week/' . $week->week] = array(
 			'title' => 'Week ' . $week->week,
-			'page callback' => 'pickem_games_listing',
+			'page callback' => 'pickem_games_week_listing',
 			'access callback' => TRUE,
 		);
 	}

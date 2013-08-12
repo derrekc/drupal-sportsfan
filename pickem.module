@@ -81,8 +81,8 @@ function pickem_menu() {
 			'page arguments' => array('pickem_games_listing', 2),
 			'access callback' => TRUE,
 		),
-		'schools' => array(
-			'title callback' => 'Schools',
+		'pickem/schools' => array(
+			'title callback' => 'pickem_school_page_title',
 			'page callback' => 'pickem_school_listing',
 			'access callback' => TRUE,
 			'file' => 'pickem.school.inc',
@@ -98,9 +98,10 @@ function pickem_menu() {
 			'access callback' => TRUE,
 			'type' => MENU_LOCAL_TASK,
 		);
-		$items['schools/'.$conf->name] = array(
-			'title' => $conf->displaytitle . ' Schools',
-			'page arguments' => array(1),
+		$items['pickem/schools/'.$conf->name] = array(
+			'title callback' => 'pickem_school_page_title',
+			'title arguments' => array(2),
+			'page arguments' => array(2),
 			'access callback' => TRUE,
 			'type' => MENU_LOCAL_TASK,
 		);
@@ -124,6 +125,15 @@ function pickem_menu() {
 		);
 	}
 	return $items;
+}
+
+function pickem_school_page_title($conf = NULL) {
+	if ($conf) {
+		$result = db_query("SELECT displaytitle FROM {conference} WHERE conf = :conf", array(':conf' => $conf));
+		$c = $result->fetchObject();
+		return $c->displaytitle;
+	}
+	return 'Schools';
 }
 
 function pickem_admin_access() {

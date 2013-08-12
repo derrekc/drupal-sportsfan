@@ -89,7 +89,9 @@ function _pickem_load_initial_games($fname) {
 			
 			$o->location = $data[5];
 			$o->host_conf_name = $tmp_school[$data[3]]->conf_name;
-			watchdog('initial games', print_r($tmp_school[$data[2]]));
+			if ($data[3] == 'olemiss' || $data[2] == 'olemiss') {
+				watchdog('initial games', print_r($tmp_school[$data[2]]));
+			}
 			$o->visiting_conf_name = $tmp_school[$data[2]]->conf_name;
 			$o->neutral = $data[6] == 'neutral' ? 'Y' : 'N';
 			$o->location = $data[5];

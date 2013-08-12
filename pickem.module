@@ -87,6 +87,11 @@ function pickem_menu() {
 			'access callback' => TRUE,
 			'file' => 'pickem.school.inc',
 			'menu_name' => 'Main menu',
+		),
+		'pickem/slate' => array(
+			'title' => 'Pick Slate',
+			'page callback' => 'pickem_slate_listing',
+			'access arguments' => array('pickem player', 'administer pickem games'),
 		)
 	);
 	
@@ -107,7 +112,7 @@ function pickem_menu() {
 			'type' => MENU_LOCAL_TASK,
 		);
 	}
-	$result = db_query('SELECT DISTINCT week FROM {game} WHERE season = :season ORDER BY week', array(':season' => variable_get('pickem.current_season')));
+	$result = db_query('SELECT DISTINCT week FROM {game} WHERE season = :season ORDER BY week LIMIT 7', array(':season' => variable_get('pickem.current_season')));
 	foreach($result as $week) {
 		$weekkey = sprintf("WK%2d", $week->week);
 		$items['admin/structure/pickem/games/week/' . $week->week] = array(

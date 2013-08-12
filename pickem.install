@@ -62,6 +62,7 @@ function _pickem_load_initial_games($fname) {
 			
 			$o->location = $data[5];
 			$o->host_conf_name = $tmp_school[$data[3]]->conf_name;
+			$o->visiting_conf_name = $tmp_school[$data[2]]->conf_name;
 			$o->neutral = $data[6] == 'neutral' ? 'Y' : 'N';
 			if (isset($data[7])) {
 				# game title

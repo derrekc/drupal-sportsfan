@@ -73,8 +73,8 @@ function pickem_menu() {
 	$result = db_query('SELECT DISTINCT week FROM {game} WHERE season = :season ORDER BY week', array(':season' => variable_get('pickem.current_season')));
 	foreach($result as $week) {
 		$weekkey = sprintf("WK%2d", $week->week);
-		$items['admin/structure/pickem/games/week/' . $weekkey] = array(
-			'title' => $week->week,
+		$items['admin/structure/pickem/games/week/' . $week->week] = array(
+			'title' => $weekkey,
 			'page callback' => 'drupal_get_form',
 			'page arguments' => array('pickem_games_listing', 5),
 			'access callback' => TRUE,

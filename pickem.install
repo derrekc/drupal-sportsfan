@@ -42,6 +42,11 @@ function _pickem_load_schools() {
 			$o->nickname = $data[3];
 			$o->conf_name = $data[4];
 			$o->conf_division = $data[5];
+			if (isset($data[6])) {
+				$o->sportsbook_name = $data[5];
+			} else {
+				$o->sportsbook_name = preg_replace('/s+/', '', $data[0]);
+			}
 			drupal_write_record('school', $o);
 			$tmp_school[$o->name] = $o;
 		}
@@ -130,6 +135,10 @@ function pickem_schema() {
 					'type' => 'varchar',
 					'length' => 35,
 					'default' => '',
+				),
+				'sportsbook_name' => array(
+					'type' => 'varchar',
+					'length' => 35,
 				),
 				'conf_name' => array(
 					'type' => 'varchar',
@@ -434,6 +443,12 @@ function pickem_update_7110() {
 	));
 }
 
+function pickem_update_7113() {
+	db_add_field('school', 'sportsbook_id', array(
+		'type' => 'varchar',
+		'length' => '35',
+	));
+}
 
 function _pickem_load_conferences() {
 	global $tmp_school;

@@ -59,16 +59,22 @@ function pickem_menu() {
 			'file' => 'pickem.school.inc',
 		),
 		'admin/structure/pickem/games/conf' => array(
-			'title' => 'Games, by Conference',
+			'title' => 'Games - By Conference',
 			'page callback' => 'pickem_games_conf_listing',
 			'access callback' => TRUE,
 		),
 		'admin/structure/pickem/games/week' => array(
-			'title' => 'Games, by Week',
+			'title' => 'Games - By Week',
 			'page callback' => 'drupal_get_form',
 			'page arguments' => array('pickem_games_listing'),
 			'access callback' => TRUE,
-		)
+		),
+		'pickem/games/week' => array(
+			'title' => 'Scoreboard - By Week',
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('pickem_games_listing'),
+			'access callback' => TRUE,
+		),
 	);
 	$result = db_query('SELECT DISTINCT week FROM {game} WHERE season = :season ORDER BY week', array(':season' => variable_get('pickem.current_season')));
 	foreach($result as $week) {
@@ -101,9 +107,11 @@ function pickem_admin_access() {
 }
 
 function pickem_games_listing($form, &$form_state, $week = NULL) {
-
 	drupal_add_library('system', 'drupal.ajax');
 	
+	if ($week == NULL) {
+		$week = 1;
+	}
 	# tip from https://drupal.org/node/1253688#comment-4882652
 	$subquery = db_select('slate', 'sl');
 	$subquery->addField('sl', 'slate_id', 'slate_id');

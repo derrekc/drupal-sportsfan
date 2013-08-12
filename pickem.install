@@ -415,3 +415,14 @@ function pickem_schema() {
 		),
 	);
 }
+
+/**
+ * Implements hook_update_N()
+ */
+function pickem_update_7110() {
+	db_add_field('game', 'overtimes', array(
+		'type' => 'int',
+		'size' => 'tiny',
+		'default' => 0,
+	));
+}

@@ -118,6 +118,7 @@ function pickem_games_listing($form, &$form_state, $week = NULL) {
 	$query->fields('g');
 	$query->addField('host', 'displaytitle', 'host_school');
 	$query->addField('visiting', 'displaytitle', 'visiting_school');
+	$query->addField('sl', 'slate_id');
 	$query->orderBy('game_date')
 	->condition('week', $week)
 	->limit(15);

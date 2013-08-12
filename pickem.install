@@ -64,6 +64,7 @@ function _pickem_load_initial_games($fname) {
 			$o->host_conf_name = $tmp_school[$data[3]]->conf_name;
 			$o->visiting_conf_name = $tmp_school[$data[2]]->conf_name;
 			$o->neutral = $data[6] == 'neutral' ? 'Y' : 'N';
+			$o->location = $data[5];
 			if (isset($data[7])) {
 				# game title
 				$o->title = $data[7];
@@ -368,6 +369,10 @@ function pickem_schema() {
 					'not null' => TRUE,
 					'default' => 'N',
 				),
+				'location' => array(
+					'type' => 'varchar',
+					'size' => 128,
+				),
 				'sport' => array(
 					'type' => 'varchar',
 					'size' => 12,
@@ -390,6 +395,7 @@ function pickem_schema() {
 				'visiting_school' => array(array('visiting_school_name', 5)),
 				'winning_school' => array(array('winning_school_name', 5)),
 				'sport' => array(array('sport', 5)),	
+				'location' => array(array('location', 5)),
 			),
 			'primary key' => array('gid'),
 			'foreign keys' => array(

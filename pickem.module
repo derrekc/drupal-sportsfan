@@ -100,7 +100,7 @@ function pickem_menu() {
 		);
 		$items['pickem/schools/'.$conf->name] = array(
 			'title callback' => 'pickem_school_page_title',
-			'title arguments' => array(2),
+			'title arguments' => array($conf->name),
 			'page arguments' => array(2),
 			'access callback' => TRUE,
 			'type' => MENU_LOCAL_TASK,
@@ -128,7 +128,7 @@ function pickem_menu() {
 }
 
 function pickem_school_page_title($conf = NULL) {
-	if ($conf) {
+	if ($conf != NULL) {
 		$result = db_query("SELECT displaytitle FROM {conference} WHERE name = :conf", array(':conf' => $conf));
 		$c = $result->fetchObject();
 		return $c->displaytitle;

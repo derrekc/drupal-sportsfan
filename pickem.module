@@ -101,6 +101,7 @@ function pickem_menu() {
 		$items['schools/'.$conf->name] = array(
 			'title' => $conf->displaytitle . ' Schools',
 			'page arguments' => array(1),
+			'access callback' => TRUE,
 			'type' => MENU_LOCAL_TASK,
 		);
 	}

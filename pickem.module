@@ -278,6 +278,9 @@ function pickem_permission() {
 			'title' => t('Administer Pickem Games'),
 			'description' => t('Perform administration tasks on Pickem games'),
 		),
+		'pickem player' => array(
+			'description' => t('Can play the pickem content(s)'),
+		),
 	);
 }
  

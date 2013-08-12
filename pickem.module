@@ -79,7 +79,7 @@ function pickem_menu() {
 	
 	$result = db_query("SELECT name, title, displaytitle FROM conference WHERE name IN ('acc','sec','big10','big12','pac12','ind') order by name");
 	foreach ($result as $conf) {
-		$items['admin/pickem/games/conf/' . $conf->name] = array(
+		$items['admin/structure/pickem/games/conf/' . $conf->name] = array(
 			'title' => $conf->displaytitle,
 			'page callback' => 'drupal_get_form',
 			'page arguments' => array('pickem_games_listing', 4, 5),

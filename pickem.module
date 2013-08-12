@@ -128,14 +128,13 @@ function pickem_menu() {
 }
 
 function pickem_school_page_title($conf = NULL) {
-	watchdog('pickem_school_page_title', $conf);
 	if ($conf != NULL) {
 		$result = db_query("SELECT displaytitle FROM {conference} WHERE name = :conf", array(':conf' => $conf));
 		$c = $result->fetchObject();
-		watchdog('pickem_school_page_title', print_r($c, TRUE));
 		return $c->displaytitle;
+	} else {
+		return 'Schools';
 	}
-	return 'Schools';
 }
 
 function pickem_admin_access() {

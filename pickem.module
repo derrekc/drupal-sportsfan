@@ -72,7 +72,13 @@ function pickem_menu() {
 		'pickem/games/week' => array(
 			'title' => 'Scoreboard - By Week',
 			'page callback' => 'drupal_get_form',
-			'page arguments' => array('pickem_games_listing'),
+			'page arguments' => array('pickem_games_listing', 2),
+			'access callback' => TRUE,
+		),
+		'pickem/games/conf' => array(
+			'title' => 'Scoreboard - By Conference',
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('pickem_games_listing', 2),
 			'access callback' => TRUE,
 		),
 	);
@@ -119,6 +125,13 @@ function pickem_admin_access() {
 
 function pickem_games_listing($form, &$form_state, $objtype = NULL, $objval = NULL) {
 	drupal_add_library('system', 'drupal.ajax');
+	
+	if ($objtype == 'week') {
+		$objval = ($objval == NULL) ? 1 : $objval;
+	} else if ($objtype == 'conf') {
+		$objval = ($objval == NULL) ? variable_get('pickem.default_conference') : $objval;
+	}
+	
 	# tip from https://drupal.org/node/1253688#comment-4882652
 	$subquery = db_select('slate', 'sl');
 	$subquery->addField('sl', 'slate_id', 'slate_id');

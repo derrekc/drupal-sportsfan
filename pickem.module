@@ -101,13 +101,14 @@ function pickem_admin_access() {
 }
 
 function pickem_games_listing($form, &$form_state, $week = NULL) {
-	watchdog('pickem_games', "week = [" . $week ."]");
+
 	drupal_add_library('system', 'drupal.ajax');
 	
 	# tip from https://drupal.org/node/1253688#comment-4882652
 	$subquery = db_select('slate', 'sl');
 	$subquery->addField('sl', 'slate_id', 'slate_id');
 	$subquery->addField('sl', 'gid', 'slate_gid');
+	$subquery->condition('slate_id', $week);
 	
 	$query = db_select('game', 'g')->extend('PagerDefault')->extend('TableSort');
 	$query->leftJoin($subquery, 'sl', 'g.gid = sl.slate_gid');

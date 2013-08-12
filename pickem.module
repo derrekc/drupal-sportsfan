@@ -104,7 +104,6 @@ function pickem_menu() {
 			'title arguments' => array($conf->name),
 			'page arguments' => array(2),
 			'access callback' => TRUE,
-			'menu_name' => 'Main menu',
 			'type' => MENU_LOCAL_TASK,
 		);
 	}

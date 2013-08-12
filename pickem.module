@@ -103,6 +103,13 @@ function pickem_menu() {
 			'access callback' => TRUE,
 			'type' => MENU_LOCAL_TASK,
 		);
+		$items['pickem/games/week/' . $week->week] = array(
+			'title' => $weekkey,
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('pickem_games_listing', 2, 3),
+			'access callback' => TRUE,
+			'type' => MENU_LOCAL_TASK,
+		);
 	}
 	return $items;
 }

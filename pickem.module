@@ -124,7 +124,7 @@ function pickem_games_admin($form, &$form_state, $week) {
 			$game_title .= ' at ';
 		}
 		$game_title .= $record->host_school;
-		$game_status = $record->complete == 'Y' ? 'F' : $record->kickoff_time,
+		$game_status = $record->complete == 'Y' ? 'F' : $record->kickoff_time;
 
 		$rows[] = array(
 			'data' => array(

@@ -64,7 +64,7 @@ function pickem_menu() {
 			'access callback' => TRUE,
 		),
 		'admin/structure/pickem/games/week' => array(
-			'title' => 'Games - By Week',
+			'title' => 'Scoreboard - By Week',
 			'page callback' => 'drupal_get_form',
 			'page arguments' => array('pickem_games_listing'),
 			'access callback' => TRUE,
@@ -76,13 +76,24 @@ function pickem_menu() {
 			'access callback' => TRUE,
 		),
 	);
+	
+	$result = db_query("SELECT name, title, displaytitle FROM conference WHERE name IN ('acc','sec','big10','big12','pac12','ind') order by name");
+	foreach ($result as $conf) {
+		$items['admin/pickem/games/conf/' . $conf->name] = array(
+			'title' => $conf->displaytitle,
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('pickem_games_listing', 4, 5),
+			'access callback' => TRUE,
+			'type' => MENU_LOCAL_TASK,
+		);
+	}
 	$result = db_query('SELECT DISTINCT week FROM {game} WHERE season = :season ORDER BY week', array(':season' => variable_get('pickem.current_season')));
 	foreach($result as $week) {
 		$weekkey = sprintf("WK%2d", $week->week);
 		$items['admin/structure/pickem/games/week/' . $week->week] = array(
 			'title' => $weekkey,
 			'page callback' => 'drupal_get_form',
-			'page arguments' => array('pickem_games_listing', 5),
+			'page arguments' => array('pickem_games_listing', 4, 5),
 			'access callback' => TRUE,
 			'type' => MENU_LOCAL_TASK,
 		);
@@ -106,12 +117,8 @@ function pickem_admin_access() {
 	return TRUE;
 }
 
-function pickem_games_listing($form, &$form_state, $week = NULL) {
+function pickem_games_listing($form, &$form_state, $objtype = NULL, $objval = NULL) {
 	drupal_add_library('system', 'drupal.ajax');
-	
-	if ($week == NULL) {
-		$week = 1;
-	}
 	# tip from https://drupal.org/node/1253688#comment-4882652
 	$subquery = db_select('slate', 'sl');
 	$subquery->addField('sl', 'slate_id', 'slate_id');
@@ -128,9 +135,19 @@ function pickem_games_listing($form, &$form_state, $week = NULL) {
 	$query->addField('host', 'displaytitle', 'host_school');
 	$query->addField('visiting', 'displaytitle', 'visiting_school');
 	$query->addField('sl', 'slate_id', 'slate_id');
-	$query->orderBy('game_date')
-	->condition('week', $week)
-	->limit(15);
+	$query->orderBy('game_date');
+	
+	if ($objtype != NULL) {
+		if ($objtype == 'week') {
+			$query->condition('week', $objval);
+		} else if ($objtype == 'conf') {
+			$or = db_or();
+			$or->condition('host_conf_name', $objval);
+			$or->condition('visiting_conf_name', $objval);
+			$query->condition($or);
+		}
+	}
+	$query->limit(15);
 	$result = $query->execute();
 
 	$headers = array(

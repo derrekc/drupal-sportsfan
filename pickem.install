@@ -472,4 +472,3 @@ function pickem_update_7112() {
 function pickem_update_7114() {
 	_pickem_load_conferences();
 }
-}

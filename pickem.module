@@ -133,11 +133,61 @@ function pickem_menu() {
 	return $items;
 }
 
-function pickem_slate_listing() {
+function pickem_slate_listing($week = NULL) {
 	if (!user_access('pickem player')) {
 		return t('<p>Please register for the Pickem competition.</p>');
 	}
-	return t('<p>Legit player or administrator.</p>');
+	drupal_add_library('system', 'drupal.ajax');
+
+	$result = pickem_fetch_slate($week);
+
+	$headers = array(
+		t('Home'),
+		t('Score'),
+		t('Visitor'),
+		t('Score'),
+		t('Date'),
+		t('Day'),
+		t('Status'),
+		t('Location'),
+		t('Options'),
+	);
+	
+	$rows = array();
+	
+	while($record = $result->fetchObject()) {
+	
+		$game_classes = array();
+		if ($record->completed == 'Y') {
+			$game_classes[] = 'game-complete';
+		}
+
+		$rows[] = array(
+			'data' => array(
+				'',
+				'',
+				$record->host_school,
+				$record->host_score,
+				$record->visiting_school,
+				$record->visiting_score,
+				$game_status,
+				$record->location,
+				'',
+			),
+			'classes' => $game_classes,
+		);
+	}
+	
+	$build['slate'] = array(
+		'#theme' => 'table',
+		'#header' => $headers,
+		'#rows' => $rows,
+	);
+	$build['pager'] = array(
+		'#theme' => 'pager',
+	);
+	
+	return $build;
 }
 
 function pickem_school_page_title($conf = NULL) {
@@ -166,6 +216,82 @@ function pickem_admin_access() {
 	return TRUE;
 }
 
+/**
+ * Fetch the slate of games for a pickem week
+ */
+function pickem_fetch_slate($week = NULL) {
+	global $user;
+	
+	$query = db_select('slate', 's')->extend('PagerDefault')->extend('TableSort');
+	$query->join('game', 'g', 's.gid = g.gid');
+	$query->leftJoin('pick', 'p', 'p.gid = g.gid and p.uid = :uid', array(':uid' => $user->uid));
+	$query->join('school', 'host', 'g.host_school_name = host.name');
+	$query->join('school', 'visiting', 'g.visiting_school_name = visiting.name');
+	$query->join('school', 'winning', 'g.winning_school_name = winning.name');
+	
+	$query->join('school', 'pick2', 'p.pick_school_name = pick2.name');
+	
+	$query->fields('g');
+	$query->addField('p', 'pick_school_name', 'pick_school_name');
+	$query->addField('host', 'name', 'host_school');
+	$query->addField('visiting', 'name', 'visiting_school');
+	$query->addField('p', 'pick_school_name');
+	$query->orderBy('g.game_date');
+	
+	if ($week == NULL) {
+		$week = 1;
+	}
+	$query->condition('s.slate_id', $week);
+	echo $query;
+	$result = $query->execute();
+	return $result;
+}
+
+function pickem_fetch_games($week, $conf, $include_slate = TRUE) {
+	$query = db_select('game', 'g')->extend('PagerDefault')->extend('TableSort');
+	
+	if ($include_slate) {
+		# tip from https://drupal.org/node/1253688#comment-4882652
+		$subquery = db_select('slate', 'sl');
+		$subquery->addField('sl', 'slate_id', 'slate_id');
+		$subquery->addField('sl', 'gid', 'slate_gid');
+
+		#$subquery = db_select('slate', 's1');
+		#$subquery->addField('sl', 'slate_id', 'slate_id');
+		#$subquery->addField('sl', 'gid', 'slate_gid');
+
+		if ($week != NULL) {
+			$subquery->condition('slate_id', $week);
+		}
+		$query->leftJoin($subquery, 'sl', 'g.gid = sl.slate_gid');
+		#$query->addField('sl', 'slate_id', 'slate_id');
+		$query->addField('sl', 'slate_id', 'slate_id');
+	}
+
+	$query->join('school', 'host', 'g.host_school_name = host.name');
+	$query->join('school', 'visiting', 'g.visiting_school_name = visiting.name');
+	
+	$query->fields('g');
+	$query->addField('host', 'displaytitle', 'host_school');
+	$query->addField('visiting', 'displaytitle', 'visiting_school');
+	$query->orderBy('game_date');
+	
+	if ($week != NULL) {
+		$query->condition('week', $week);
+	}
+	if ($conf != NULL) {
+		$or = db_or();
+		$or->condition('host_conf_name', $conf);
+		$or->condition('visiting_conf_name', $conf);
+		$query->condition($or);
+	}
+
+	$query->limit(15);
+	$result = $query->execute();
+	
+	return $result;
+}
+
 function pickem_games_listing($form, &$form_state, $objtype = NULL, $objval = NULL) {
 	drupal_add_library('system', 'drupal.ajax');
 	
@@ -175,7 +301,7 @@ function pickem_games_listing($form, &$form_state, $objtype = NULL, $objval = NU
 		$objval = ($objval == NULL) ? variable_get('pickem.default_conference') : $objval;
 	}
 	
-	# tip from https://drupal.org/node/1253688#comment-4882652
+	/*
 	$subquery = db_select('slate', 'sl');
 	$subquery->addField('sl', 'slate_id', 'slate_id');
 	$subquery->addField('sl', 'gid', 'slate_gid');
@@ -207,6 +333,14 @@ function pickem_games_listing($form, &$form_state, $objtype = NULL, $objval = NU
 	}
 	$query->limit(15);
 	$result = $query->execute();
+	*/
+	
+	$result = NULL;
+	if ($objtype == 'week') {
+		$result = pickem_fetch_games($objval, NULL);
+	} else if ($objtype == 'conf') {
+		$result = pickem_fetch_games(NULL, $objval);
+	}	
 
 	$headers = array(
 		t('Date'),
@@ -240,7 +374,6 @@ function pickem_games_listing($form, &$form_state, $objtype = NULL, $objval = NU
 		$game_status = $record->completed == 'Y' ? 'F' : $record->kickoff_time;
 		$record->host_score = $record->host_score == '' ? '-' : $record->host_score;
 		$record->visiting_score = $record->visiting_score == '' ? '-' : $record->visiting_score;
-		watchdog('games list', print_r($record, TRUE));
 	
 		$game_classes = array();
 		if ($record->completed == 'Y') {

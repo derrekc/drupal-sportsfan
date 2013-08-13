@@ -9,7 +9,11 @@
 /**
  * Implements hook_install
  */
+$pickem = NULL;
+
 function pickem_install() {
+	global $pickem;
+	
 	variable_set('pickem.default_conference', 'acc');
 	variable_set('pickem.current_season', 2013);
 
@@ -21,6 +25,7 @@ function pickem_install() {
 	$pickem->title = "ACCPickem 2013";
 	$pickem->season = '2013';
 	drupal_write_record('pickem', $pickem);
+	print_r($pickem);
 	
 	_pickem_load_conferences();
 	_pickem_load_schools();
@@ -271,6 +276,11 @@ function pickem_schema() {
 			'fields' => array(
 				'pkid' => array(
 					'type' => 'serial',
+					'unsigned' => TRUE,
+					'not null' => TRUE,
+				),
+				'uid' => array(
+					'type' => 'int',
 					'unsigned' => TRUE,
 					'not null' => TRUE,
 				),

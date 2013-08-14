@@ -10,6 +10,16 @@ function pickem_init() {
 	
 }
 
+function pickem_theme() {
+	return array(
+		'game_title' => array(
+			'variables' => array('game' => NULL),
+			'template' => 'game_title',
+			'path' => drupal_get_path('module', 'pickem') . '/theme',
+		),
+	);
+}
+
 function pickem_menu() {
 	$items = array(
 		'admin/config/pickem' => array(
@@ -90,12 +100,19 @@ function pickem_menu() {
 		),
 		'pickem/slate' => array(
 			'title' => 'Pick Slate',
-			'page callback' => 'pickem_slate_listing',
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('pickem_slate_listing'),
 			'access callback' => TRUE,
 		),
-	);
-	
+		'pickem/slate/all' => array(
+			'title' => 'All',
+			'type' => MENU_LOCAL_TASK,
+			'access callback' => TRUE,
+			'weight' => -10,
+		),
+	);	
 	$result = db_query("SELECT name, title, displaytitle FROM conference WHERE name IN ('acc','sec','big10','big12','pac12','ind') order by title");
+	$menu_weight = -6;
 	foreach ($result as $conf) {
 		$items['admin/structure/pickem/games/conf/' . $conf->name] = array(
 			'title' => $conf->displaytitle,
@@ -110,11 +127,19 @@ function pickem_menu() {
 			'page arguments' => array(2),
 			'access callback' => TRUE,
 			'type' => MENU_LOCAL_TASK,
+			'weight' => $menu_weight++,
 		);
 	}
-	$result = db_query('SELECT DISTINCT week FROM {game} WHERE season = :season ORDER BY week LIMIT 7', array(':season' => variable_get('pickem.current_season')));
+	$result = db_query('SELECT DISTINCT week FROM {game} WHERE season = :season ORDER BY week LIMIT 14', array(':season' => variable_get('pickem.current_season')));
 	foreach($result as $week) {
-		$weekkey = sprintf("WK%2d", $week->week);
+		$weekkey = sprintf("%2d", $week->week);
+		$items['pickem/slate/'.$week->week] = array(
+			'title' => $weekkey,
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('pickem_slate_listing', 2),
+			'access callback' => TRUE,
+			'type' => MENU_LOCAL_TASK,
+		);
 		$items['admin/structure/pickem/games/week/' . $week->week] = array(
 			'title' => $weekkey,
 			'page callback' => 'drupal_get_form',
@@ -133,61 +158,102 @@ function pickem_menu() {
 	return $items;
 }
 
-function pickem_slate_listing($week = NULL) {
-	if (!user_access('pickem player')) {
-		return t('<p>Please register for the Pickem competition.</p>');
-	}
-	drupal_add_library('system', 'drupal.ajax');
+function pickem_slate_listing_submit($form, $form_state) {
+	dpm($form_state);
+}
 
+function pickem_slate_listing($form, &$form_state, $week = NULL) {
+	/*
+	if (!user_access('pickem player')) {
+		$form['invalid'] = array(
+			'#type' => 'markup',
+			'#markup' => t('<p>Please register for the Pickem competition.</p>'),
+		);
+		return $form;
+	}
+	*/
+	drupal_add_library('system', 'drupal.ajax');
+	if ($week == NULL) {
+		$week = 1;
+	}
+	drupal_set_title(t('Pick Slate: Week ' . $week));
 	$result = pickem_fetch_slate($week);
 
-	$headers = array(
-		t('Home'),
-		t('Score'),
-		t('Visitor'),
-		t('Score'),
-		t('Date'),
-		t('Day'),
-		t('Status'),
-		t('Location'),
-		t('Options'),
-	);
-	
-	$rows = array();
-	
+	$clearrow = TRUE;
 	while($record = $result->fetchObject()) {
-	
-		$game_classes = array();
-		if ($record->completed == 'Y') {
-			$game_classes[] = 'game-complete';
-		}
 
-		$rows[] = array(
-			'data' => array(
-				'',
-				'',
-				$record->host_school,
-				$record->host_score,
-				$record->visiting_school,
-				$record->visiting_score,
-				$game_status,
-				$record->location,
-				'',
-			),
-			'classes' => $game_classes,
+		$game_title = $record->visiting_school;
+		if ($record->neutral) {
+			$game_title .= ' vs ';
+		} else {
+			$game_title .= ' at ';
+		}
+		$game_title .= $record->host_school;
+		$record->game_title = $game_title;
+		$record->host_is_favored = substr($record->betting_line, 0, 1) == 'h';
+
+		$record->game_date_str = date('M j, Y', $record->game_date);
+		$record->kickoff_time = date('g:i A', $record->game_date);
+		if ($record->kickoff_time == '12:00 AM') {
+			$record->kickoff_time = 'TBA';
+		}
+		$record->game_day = date('D', $record->game_date);
+
+		$pickIsOpen = TRUE;
+		
+		$pickOptions = '';
+		if ($pickIsOpen) {
+			$pickOptions[''] = t('-- Select School --');
+			$pickOptions[$record->host_school_name] = $record->host_school;
+			$pickOptions[$record->visiting_school_name] = $record->visiting_school;
+		}
+		
+		$form['game_' . $record->gid] = array(
+			'#type' => 'container',
+			'#title' => t($game_title),
+			'#attributes' => array('class' => array('pickem-entry', 'span6')),
+		);
+		$form['game_' . $record->gid]['game-title'] = array(
+			'#type' => 'markup',
+			'#markup' => theme('game_title', array('game' => $record)),
+		);
+		if ($clearrow) {
+			$form['game_' . $record->gid]['#attributes']['class'][] = 'clear-row';
+		}
+		$clearrow = !$clearrow;
+		
+		$form_state['picks'][$record->gid] = $record->pkid ? $record->pkid : NULL;
+		
+		$form['game_' . $record->gid]['pkid'] = array(
+			'#type' => 'hidden',
+			'#default_value' => $record->pkid ? $record->pkid : '',
+		);
+		$form['game_' . $record->gid]['pick_school_name'] = array(
+			'#type' => 'select',
+			'#options' => $pickOptions,
+			'#title_display' => 'invisible',
+			'#default_value' => $record->pkid ? $record->pick_school_name : '',
 		);
 	}
-	
-	$build['slate'] = array(
-		'#theme' => 'table',
-		'#header' => $headers,
-		'#rows' => $rows,
+	$form['actions'] = array(
+		'#type' => 'actions',
+		'#attributes' => array('class' => array('span12', 'clear-row')),
 	);
-	$build['pager'] = array(
-		'#theme' => 'pager',
-	);
-	
-	return $build;
+	if (user_access('pickem player')) {
+		$form['actions']['submit'] = array(
+			'#type' => 'submit',
+			'#value' => t('Save Picks'),
+			'#attributes' => array(
+				'class' => array('btn')
+			),
+		);
+	} else {
+		$form['actions']['register'] = array(
+			'#type' => 'markup',
+			'#markup' => t('<p><strong>Please register</strong> in order to save these picks and participate in the World\'s Greatest ACC Pickem Competition.</p>'),
+		);
+	}
+	return $form;
 }
 
 function pickem_school_page_title($conf = NULL) {
@@ -227,22 +293,18 @@ function pickem_fetch_slate($week = NULL) {
 	$query->leftJoin('pick', 'p', 'p.gid = g.gid and p.uid = :uid', array(':uid' => $user->uid));
 	$query->join('school', 'host', 'g.host_school_name = host.name');
 	$query->join('school', 'visiting', 'g.visiting_school_name = visiting.name');
-	$query->join('school', 'winning', 'g.winning_school_name = winning.name');
-	
-	$query->join('school', 'pick2', 'p.pick_school_name = pick2.name');
+	$query->leftJoin('school', 'winning', 'g.winning_school_name = winning.name');
+	$query->leftJoin('school', 'userpick', 'p.pick_school_name = userpick.name');
 	
 	$query->fields('g');
 	$query->addField('p', 'pick_school_name', 'pick_school_name');
-	$query->addField('host', 'name', 'host_school');
-	$query->addField('visiting', 'name', 'visiting_school');
-	$query->addField('p', 'pick_school_name');
+	$query->addField('host', 'displaytitle', 'host_school');
+	$query->addField('visiting', 'displaytitle', 'visiting_school');
+	$query->addField('winning', 'displaytitle', 'winning_school');
+	$query->addField('p', 'pkid');
 	$query->orderBy('g.game_date');
 	
-	if ($week == NULL) {
-		$week = 1;
-	}
 	$query->condition('s.slate_id', $week);
-	echo $query;
 	$result = $query->execute();
 	return $result;
 }
@@ -256,15 +318,10 @@ function pickem_fetch_games($week, $conf, $include_slate = TRUE) {
 		$subquery->addField('sl', 'slate_id', 'slate_id');
 		$subquery->addField('sl', 'gid', 'slate_gid');
 
-		#$subquery = db_select('slate', 's1');
-		#$subquery->addField('sl', 'slate_id', 'slate_id');
-		#$subquery->addField('sl', 'gid', 'slate_gid');
-
 		if ($week != NULL) {
 			$subquery->condition('slate_id', $week);
 		}
 		$query->leftJoin($subquery, 'sl', 'g.gid = sl.slate_gid');
-		#$query->addField('sl', 'slate_id', 'slate_id');
 		$query->addField('sl', 'slate_id', 'slate_id');
 	}
 
@@ -300,40 +357,6 @@ function pickem_games_listing($form, &$form_state, $objtype = NULL, $objval = NU
 	} else if ($objtype == 'conf') {
 		$objval = ($objval == NULL) ? variable_get('pickem.default_conference') : $objval;
 	}
-	
-	/*
-	$subquery = db_select('slate', 'sl');
-	$subquery->addField('sl', 'slate_id', 'slate_id');
-	$subquery->addField('sl', 'gid', 'slate_gid');
-	if ($objtype == 'week') {
-		$subquery->condition('slate_id', $objval);
-	}
-		
-	$query = db_select('game', 'g')->extend('PagerDefault')->extend('TableSort');
-	$query->leftJoin($subquery, 'sl', 'g.gid = sl.slate_gid');
-
-	$query->join('school', 'host', 'g.host_school_name = host.name');
-	$query->join('school', 'visiting', 'g.visiting_school_name = visiting.name');
-	
-	$query->fields('g');
-	$query->addField('host', 'displaytitle', 'host_school');
-	$query->addField('visiting', 'displaytitle', 'visiting_school');
-	$query->addField('sl', 'slate_id', 'slate_id');
-	$query->orderBy('game_date');
-	
-	if ($objtype != NULL) {
-		if ($objtype == 'week') {
-			$query->condition('week', $objval);
-		} else if ($objtype == 'conf') {
-			$or = db_or();
-			$or->condition('host_conf_name', $objval);
-			$or->condition('visiting_conf_name', $objval);
-			$query->condition($or);
-		}
-	}
-	$query->limit(15);
-	$result = $query->execute();
-	*/
 	
 	$result = NULL;
 	if ($objtype == 'week') {
@@ -428,3 +451,19 @@ function pickem_block_info($delta='') {
 	return array();
 }
 
+function pickem_load_conferences($p5 = TRUE) {
+	$query = db_select('conference', 's')->extend('PagerDefault')->extend('TableSort');
+	$query->fields('s');
+	if ($p5) {
+		$query->condition('name', array('acc','big10','big12','pac12','sec','ind'), 'IN');
+	}
+	$result = $query->execute();
+	$rows = array();
+	while ($c = $result->fetchObject()) {
+		$rows[] = $c;
+	}
+	return $rows;
+}		
+
+function pickem_load_weeks() {
+}

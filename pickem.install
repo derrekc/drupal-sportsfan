@@ -16,6 +16,8 @@ function pickem_install() {
 	
 	variable_set('pickem.default_conference', 'acc');
 	variable_set('pickem.current_season', 2013);
+	$season_start = array('month' => 8, 'day' => 31, 'year' => '2013');
+	variable_set('pickem.season_start', serialize($season_start));
 
 	# temporarily store the schools as they are added to the database
 	# as we'll need to access data when adding games
@@ -27,12 +29,13 @@ function pickem_install() {
 	drupal_write_record('pickem', $pickem);
 	print_r($pickem);
 	
+	_pickem_install_weeks_data();
 	_pickem_load_conferences();
 	_pickem_load_schools();
 	
 	foreach(array('acc','sec') as $conf) {
 			$filename = $conf.'games.tsv';
-			_pickem_load_initial_games($filename);
+			_pickem_install_initial_games($filename);
 	}
 }
 
@@ -75,7 +78,21 @@ function _pickem_load_conferences() {
 	fclose($handle);
 }
 
-function _pickem_load_initial_games($fname) {
+function _pickem_install_weeks_data() {
+	$d = new DateTime('8/31/2013');
+	$startDate = $d->getTimestamp();
+	
+	for ($i = 0; $i < 14; $i++) {
+		$o = new stdClass();
+		$o->start = $startDate;
+		$o->end = $startDate + (86400 * 7) - 1;
+		$o->title = sprintf('Week %d', ($i + 1));
+		$o->season = '2013';
+		drupal_write_record('week', $o);
+		$startDate = $startDate + (86400 * 7);
+	}
+}
+function _pickem_install_initial_games($fname) {
 	global $tmp_school;
 	global $pickem;
 	
@@ -326,6 +343,10 @@ function pickem_schema() {
 					'unsigned' => TRUE,
 					'not null' => TRUE,
 					'default' => 0,
+				),
+				'title' => array(
+					'type' => 'varchar',
+					'length' => 35,
 				),
 				'season' => array(
 					'type' => 'int',

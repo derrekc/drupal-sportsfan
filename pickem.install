@@ -33,7 +33,7 @@ function pickem_install() {
 	_pickem_load_conferences();
 	_pickem_load_schools();
 	
-	foreach(array('acc','sec') as $conf) {
+	foreach(array('acc','sec','big12') as $conf) {
 			$filename = $conf.'games.tsv';
 			_pickem_install_initial_games($filename);
 	}
@@ -123,8 +123,8 @@ function _pickem_install_initial_games($fname) {
 			// if the game includes schools from the 'default conference'
 			// automatically add them to the slate of games
 			$default_conf = variable_get('pickem.default_conference','');
-			if ($tmp_school[$data[2]]->conf_name == $default_conf ||
-					$tmp_school[$data[3]]->conf_name == $default_conf) {
+			if (($tmp_school[$data[2]]->conf_name == $default_conf ||
+					$tmp_school[$data[3]]->conf_name == $default_conf) || (isset($data[8]) && $data[8] == 'slate')) {
 				
 				$s = new stdClass();
 				$s->slate_id = $o->week;

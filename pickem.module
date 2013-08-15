@@ -70,8 +70,10 @@ function pickem_menu() {
 		),
 		'admin/structure/pickem/games/conf' => array(
 			'title' => 'Games - By Conference',
-			'page callback' => 'pickem_games_conf_listing',
-			'access callback' => TRUE,
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('pickem_games_listing', 4),
+			'access callback' => 'pickem_admin_access',
+			'access arguments' => array('administer pickem games'),
 		),
 		'admin/structure/pickem/games/week' => array(
 			'title' => 'Scoreboard - By Week',
@@ -97,6 +99,12 @@ function pickem_menu() {
 			'access callback' => TRUE,
 			'file' => 'pickem.school.inc',
 			'menu_name' => 'Main menu',
+		),
+		'pickem/schools/all' => array(
+			'title' => 'All',
+			'type' => MENU_DEFAULT_LOCAL_TASK,
+			'access callback' => TRUE,
+			'weight' => -10,
 		),
 		'pickem/slate' => array(
 			'title' => 'Pick Slate',
@@ -323,6 +331,7 @@ function pickem_fetch_games($week, $conf, $include_slate = TRUE) {
 		}
 		$query->leftJoin($subquery, 'sl', 'g.gid = sl.slate_gid');
 		$query->addField('sl', 'slate_id', 'slate_id');
+		$query->addField('sl', 'slate_gid', 'slate_game_id');
 	}
 
 	$query->join('school', 'host', 'g.host_school_name = host.name');
@@ -374,8 +383,10 @@ function pickem_games_listing($form, &$form_state, $objtype = NULL, $objval = NU
 		t('Score'),
 		t('Status'),
 		t('Location'),
-		t('Options'),
 	);
+	if (path_is_admin(current_path())) {
+		$headers[] = t('Options');
+	}
 	
 	$rows = array();
 	
@@ -403,7 +414,7 @@ function pickem_games_listing($form, &$form_state, $objtype = NULL, $objval = NU
 			$game_classes[] = 'game-complete';
 		}
 
-		$rows[] = array(
+		$row = array(
 			'data' => array(
 				$record->game_date_str,
 				$record->game_day,
@@ -413,10 +424,13 @@ function pickem_games_listing($form, &$form_state, $objtype = NULL, $objval = NU
 				$record->visiting_score,
 				$game_status,
 				$record->location,
-				'',
 			),
 			'classes' => $game_classes,
 		);
+		if (path_is_admin(current_path())) {
+			$row['data'][] = $record->slate_game_id ? 'Remove from Slate' : 'Add To Slate';
+		}
+		$rows[] = $row;
 		#kpr($record);
 	}
 	

@@ -9,6 +9,7 @@
 
 function pickem_school_listing($conf = NULL) {
 	drupal_add_library('system', 'drupal.ajax');
+	drupal_set_title('ACCbbs Pickem: Schools');
 
 	$query = db_select('school', 's')->extend('PagerDefault')->extend('TableSort');
 	$query->join('conference', 'conf', 'conf_name = conf.name');

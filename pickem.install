@@ -15,6 +15,7 @@ function pickem_install() {
 	global $pickem;
 	
 	variable_set('pickem.default_conference', 'acc');
+	variable_set('pickem.protected_schools', array('louisville','notredame'));
 	variable_set('pickem.current_season', 2013);
 	$season_start = array('month' => 8, 'day' => 31, 'year' => '2013');
 	variable_set('pickem.season_start', serialize($season_start));
@@ -24,7 +25,7 @@ function pickem_install() {
 	$tmp_school = array();
 	
 	$pickem = new stdClass();
-	$pickem->title = "ACCPickem 2013";
+	$pickem->title = "ACCbbs Pickem 2013";
 	$pickem->season = '2013';
 	drupal_write_record('pickem', $pickem);
 	print_r($pickem);
@@ -33,7 +34,7 @@ function pickem_install() {
 	_pickem_load_conferences();
 	_pickem_load_schools();
 	
-	foreach(array('acc','sec','big12') as $conf) {
+	foreach(array('acc','sec','big12','big10') as $conf) {
 			$filename = $conf.'games.tsv';
 			_pickem_install_initial_games($filename);
 	}
@@ -44,20 +45,23 @@ function _pickem_load_schools() {
 	$file = drupal_get_path('module', 'pickem') . '/data/schools.tsv';
 	if (($handle = fopen($file, 'r')) !== FALSE) {
 		while (($data = fgetcsv($handle, 90, "\t"))) {
-			$o = new stdClass();
-			$o->title = $data[0];
-			$o->displaytitle = $data[1];
-			$o->name = $data[2];
-			$o->nickname = $data[3];
-			$o->conf_name = $data[4];
-			$o->conf_division = $data[5];
-			if (isset($data[6])) {
-				$o->sportsbook_name = $data[6];
-			} else {
-				$o->sportsbook_name = preg_replace('/\s+/', '', $data[0]);
+			$r = db_query('SELECT s.name FROM {school} s WHERE name = :name', array(':name' => $data[2]));
+			if (!$r->fetchObject()) {
+				$o = new stdClass();
+				$o->title = $data[0];
+				$o->displaytitle = $data[1];
+				$o->name = $data[2];
+				$o->nickname = $data[3];
+				$o->conf_name = $data[4];
+				$o->conf_division = $data[5];
+				if (isset($data[6])) {
+					$o->sportsbook_name = $data[6];
+				} else {
+					$o->sportsbook_name = preg_replace('/\s+/', '', $data[0]);
+				}
+				drupal_write_record('school', $o);
+				$tmp_school[$o->name] = $o;
 			}
-			drupal_write_record('school', $o);
-			$tmp_school[$o->name] = $o;
 		}
 	}
 	fclose($handle);
@@ -123,9 +127,17 @@ function _pickem_install_initial_games($fname) {
 			// if the game includes schools from the 'default conference'
 			// automatically add them to the slate of games
 			$default_conf = variable_get('pickem.default_conference','');
-			if (($tmp_school[$data[2]]->conf_name == $default_conf ||
-					$tmp_school[$data[3]]->conf_name == $default_conf) || (isset($data[8]) && $data[8] == 'slate')) {
-				
+			$tmp_array = array($tmp_school[$data[2]]->conf_name, $tmp_school[$data[3]]->conf_name);
+			$protected_schools = variable_get('pickem.protected_schools', array());
+			
+			$addToSlate = in_array($default_conf, $tmp_array) || 
+				(in_array($data[2], $protected_schools) ||
+				 in_array($data[3], $protected_schools)) ||
+				$data[8] == 'slate';
+			
+			//if (($tmp_school[$data[2]]->conf_name == $default_conf ||
+			//		$tmp_school[$data[3]]->conf_name == $default_conf) || (isset($data[8]) && $data[8] == 'slate')) {
+			if ($addToSlate) {	
 				$s = new stdClass();
 				$s->slate_id = $o->week;
 				$s->gid = $o->gid;
@@ -314,6 +326,7 @@ function pickem_schema() {
 				'correct' => array(
 					'type' => 'char',
 					'size' => 1,
+					'default' => NULL,
 				),
 				'week' => array(
 					'type' => 'int',
@@ -444,7 +457,7 @@ function pickem_schema() {
 				),
 				'betting_line' => array(
 					'type' => 'varchar',
-					'length' => '20',
+					'length' => '50',
 				),
 				'completed' => array(
 					'type' => 'char',
@@ -481,5 +494,71 @@ function pickem_schema() {
 				),
 			),
 		),
+	);
+}
+
+function pickem_update_7210() {
+	db_create_table('sportspoll',
+		array(
+			'description' => 'Polls for sports entities',
+			'fields' => array(
+				'pollid' => array(
+					'type' => 'serial',
+					'unsigned' => TRUE,
+					'not null' => TRUE,
+				),
+				'title' => array(
+					'description' => 'Poll Title (e.g. Coaches Poll)',
+					'type' => 'varchar',
+					'length' => '50',
+					'not null' => TRUE,
+					'default' => '',
+				),
+				'name' => array(
+					'type' => 'varchar',
+					'length' => 50,
+					'not null' => TRUE,
+					'default' => '',
+				),
+				'active' => array(
+					'type' => 'int',
+					'size' => 'tiny',
+					'not null' => TRUE,
+					'default' => 1,
+				),
+			),
+			'primary key' => array('pollid'),
+		)
+	);
+	db_create_table('sportspoll_votes',
+		array(
+			'description' => 'Polls for sports entities',
+			'fields' => array(
+				'pollid' => array(
+					'type' => 'serial',
+					'unsigned' => TRUE,
+					'not null' => TRUE,
+				),
+				'school_name' => array(
+					'description' => 'Poll Title (e.g. Coaches Poll)',
+					'type' => 'varchar',
+					'length' => '50',
+					'not null' => TRUE,
+					'default' => '',
+				),
+				'rank' => array(
+					'type' => 'int',
+					'size' => 'tiny',
+					'not null' => TRUE,
+				),
+				'active' => array(
+					'type' => 'int',
+					'size' => 'tiny',
+					'not null' => TRUE,
+					'default' => 1,
+				),
+			),
+			'primary key' => array('pollid'),
+		)
 	);
 }

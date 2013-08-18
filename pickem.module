@@ -6,6 +6,8 @@
  * Window - Preferences - PHPeclipse - PHP - Code Templates
  */
 
+require_once(drupal_get_path('module', 'pickem') . '/pickem.model.inc');
+
 function pickem_init() {
 	
 }
@@ -56,31 +58,35 @@ function pickem_menu() {
 			'access callback' => TRUE,
 			'type' => MENU_CALLBACK,
 		),
-		'admin/structure/pickem' => array(
+		# Add the "Pickem" link to the admin menu
+		'admin/pickem' => array(
 			'title' => 'Pickem',
 			'page callback' => 'pickem_overview',
 			'access callback' => TRUE,
+			'weight' => -5,
 		),
-		'admin/structure/pickem/schools' => array(
+		'admin/pickem/schools' => array(
 			'title' => 'Schools',
 			'description' => 'List of schools',
 			'page callback' => 'pickem_school_list',
 			'access callback' => TRUE,
 			'file' => 'pickem.school.inc',
 		),
-		'admin/structure/pickem/games/conf' => array(
+		'admin/pickem/games/conf' => array(
 			'title' => 'Games - By Conference',
 			'page callback' => 'drupal_get_form',
-			'page arguments' => array('pickem_games_listing', 4),
+			'page arguments' => array('pickem_games_listing', 3),
 			'access callback' => 'pickem_admin_access',
 			'access arguments' => array('administer pickem games'),
 		),
-		'admin/structure/pickem/games/week' => array(
+		'admin/pickem/games/week' => array(
 			'title' => 'Scoreboard - By Week',
 			'page callback' => 'drupal_get_form',
-			'page arguments' => array('pickem_games_listing'),
+			'page arguments' => array('pickem_games_listing', 3),
 			'access callback' => TRUE,
 		),
+		# end Pickem link in admin menu
+		
 		'pickem/games/week' => array(
 			'title' => 'Scoreboard - By Week',
 			'page callback' => 'drupal_get_form',
@@ -92,6 +98,12 @@ function pickem_menu() {
 			'page callback' => 'drupal_get_form',
 			'page arguments' => array('pickem_games_listing', 2),
 			'access callback' => TRUE,
+		),
+		'pickem/games/conf/all' => array(
+			'title' => 'All',
+			'access callback' => TRUE,
+			'type' => MENU_DEFAULT_LOCAL_TASK,
+			'weight' => -10,
 		),
 		'pickem/schools' => array(
 			'title callback' => 'pickem_school_page_title',
@@ -118,16 +130,35 @@ function pickem_menu() {
 			'access callback' => TRUE,
 			'weight' => -10,
 		),
+		'pickem/ajax/slate/add' => array(
+			'type' => MENU_CALLBACK,
+			'page callback' => 'pickem_ajax_slate_add',
+			'page arguments' => array(4),	# gid
+			'access callback' => TRUE,
+		),
+		'pickem/ajax/slate/remove' => array(
+			'type' => MENU_CALLBACK,
+			'page callback' => 'pickem_ajax_slate_remove',
+			'page arguments' => array(4),	# gid
+			'access callback' => TRUE,
+		),
 	);	
 	$result = db_query("SELECT name, title, displaytitle FROM conference WHERE name IN ('acc','sec','big10','big12','pac12','ind') order by title");
 	$menu_weight = -6;
 	foreach ($result as $conf) {
-		$items['admin/structure/pickem/games/conf/' . $conf->name] = array(
+		$items['admin/pickem/games/conf/' . $conf->name] = array(
 			'title' => $conf->displaytitle,
 			'page callback' => 'drupal_get_form',
-			'page arguments' => array('pickem_games_listing', 4, 5),
+			'page arguments' => array('pickem_games_listing', 3, 4),
 			'access callback' => TRUE,
 			'type' => MENU_LOCAL_TASK,
+		);
+		$items['pickem/games/conf/' . $conf->name] = array(
+			'title' => $conf->displaytitle,
+			'access callback' => TRUE,
+			'type' => MENU_LOCAL_TASK,
+			'weight' => $menu_weight,
+			'page arguments' => array('pickem_games_listing', 2, 3),
 		);
 		$items['pickem/schools/'.$conf->name] = array(
 			'title callback' => 'pickem_school_page_title',
@@ -138,7 +169,7 @@ function pickem_menu() {
 			'weight' => $menu_weight++,
 		);
 	}
-	$result = db_query('SELECT DISTINCT week FROM {game} WHERE season = :season ORDER BY week LIMIT 14', array(':season' => variable_get('pickem.current_season')));
+	$result = db_query('SELECT DISTINCT week FROM {game} WHERE season = :season ORDER BY week LIMIT 16', array(':season' => variable_get('pickem.current_season')));
 	foreach($result as $week) {
 		$weekkey = sprintf("%2d", $week->week);
 		$items['pickem/slate/'.$week->week] = array(
@@ -148,10 +179,10 @@ function pickem_menu() {
 			'access callback' => TRUE,
 			'type' => MENU_LOCAL_TASK,
 		);
-		$items['admin/structure/pickem/games/week/' . $week->week] = array(
+		$items['admin/pickem/games/week/' . $week->week] = array(
 			'title' => $weekkey,
 			'page callback' => 'drupal_get_form',
-			'page arguments' => array('pickem_games_listing', 4, 5),
+			'page arguments' => array('pickem_games_listing', 3, 4),
 			'access callback' => TRUE,
 			'type' => MENU_LOCAL_TASK,
 		);
@@ -167,7 +198,28 @@ function pickem_menu() {
 }
 
 function pickem_slate_listing_submit($form, $form_state) {
-	dpm($form_state);
+	global $user;
+	//dpm($form_state);
+	foreach ($form_state['values'] as $key => $value) {
+		if (substr($key, 0, 3) == 'gid') {
+			$gid_data = explode('_', $key);
+			if ($form_state['picks'][$gid_data[1]]) {
+				// existing pick -- update
+				$o = $form_state['picks'][$gid_data[1]];
+				$o->pick_school_name = $value['pick_school_name'];
+				drupal_write_record('pick', $o, 'pkid');
+			} else {
+				// new pick
+				$o = new stdClass();
+				$o->pick_school_name = $value['pick_school_name'];
+				$o->uid = $user->uid;
+				$o->gid = $gid_data[1];
+				$o->week = $form_state['values']['week'];
+				drupal_write_record('pick', $o);
+			}
+		}
+	}
+	drupal_set_message(t('Your pick selections have been saved.'));
 }
 
 function pickem_slate_listing($form, &$form_state, $week = NULL) {
@@ -188,17 +240,28 @@ function pickem_slate_listing($form, &$form_state, $week = NULL) {
 	$result = pickem_fetch_slate($week);
 
 	$clearrow = TRUE;
+	$form['week'] = array(
+		'#type' => 'hidden',
+		'#value' => $week,
+	);
+	# keep track of the number of valid picks
+	$validPicks = 0;
+	$totalGames = 0;
 	while($record = $result->fetchObject()) {
-
+		$totalGames++;
 		$game_title = $record->visiting_school;
-		if ($record->neutral) {
-			$game_title .= ' vs ';
+		if ($record->neutral == 'Y') {
+			$record->vs_at_symbol = ' vs ';
 		} else {
-			$game_title .= ' at ';
+			$record->vs_at_symbol = ' at ';
 		}
 		$game_title .= $record->host_school;
 		$record->game_title = $game_title;
-		$record->host_is_favored = substr($record->betting_line, 0, 1) == 'h';
+
+		$record->bline = array();
+		if ($record->betting_line) {
+			$record->bline = explode(':', $record->betting_line);
+		}
 
 		$record->game_date_str = date('M j, Y', $record->game_date);
 		$record->kickoff_time = date('g:i A', $record->game_date);
@@ -212,37 +275,58 @@ function pickem_slate_listing($form, &$form_state, $week = NULL) {
 		$pickOptions = '';
 		if ($pickIsOpen) {
 			$pickOptions[''] = t('-- Select School --');
-			$pickOptions[$record->host_school_name] = $record->host_school;
 			$pickOptions[$record->visiting_school_name] = $record->visiting_school;
+			$pickOptions[$record->host_school_name] = $record->host_school;
 		}
 		
-		$form['game_' . $record->gid] = array(
+		$form['gid_' . $record->gid] = array(
 			'#type' => 'container',
 			'#title' => t($game_title),
 			'#attributes' => array('class' => array('pickem-entry', 'span6')),
+			'#tree' => TRUE,
 		);
-		$form['game_' . $record->gid]['game-title'] = array(
+		$form['gid_' . $record->gid]['game-title'] = array(
 			'#type' => 'markup',
 			'#markup' => theme('game_title', array('game' => $record)),
 		);
 		if ($clearrow) {
-			$form['game_' . $record->gid]['#attributes']['class'][] = 'clear-row';
+			$form['gid_' . $record->gid]['#attributes']['class'][] = 'clear-row';
 		}
 		$clearrow = !$clearrow;
 		
-		$form_state['picks'][$record->gid] = $record->pkid ? $record->pkid : NULL;
+		# process the pick school name (when available)
+		if ($record->pkid) {
+			$ares = db_query('SELECT p.* FROM {pick} p WHERE pkid = :pkid', 
+				array(':pkid' => $record->pkid));
+				
+			$thepick = $ares->fetchObject();
+			if (!empty($thepick->pick_school_name)) {
+				$validPicks++;
+			}
+			$form_state['picks'][$record->gid] = $ares->fetchObject();
+		} else {
+			$form_state['picks'][$record->gid] = NULL;
+		}
 		
-		$form['game_' . $record->gid]['pkid'] = array(
+		$form['gid_' . $record->gid]['pkid'] = array(
 			'#type' => 'hidden',
 			'#default_value' => $record->pkid ? $record->pkid : '',
 		);
-		$form['game_' . $record->gid]['pick_school_name'] = array(
+		$form['gid_' . $record->gid]['pick_school_name'] = array(
 			'#type' => 'select',
 			'#options' => $pickOptions,
 			'#title_display' => 'invisible',
 			'#default_value' => $record->pkid ? $record->pick_school_name : '',
 		);
 	}
+	if (($validPicks > 0) && ($validPicks < $totalGames)) {
+		// create an element that sites above the games
+		drupal_set_message(t('<strong>Warning!</strong> Please be reminded that you have not completed all of your picks'), 'warning');
+	}
+	$form['totalgames'] = array(
+		'#type' => 'hidden',
+		'#value' => $totalGames,
+	);
 	$form['actions'] = array(
 		'#type' => 'actions',
 		'#attributes' => array('class' => array('span12', 'clear-row')),
@@ -313,6 +397,7 @@ function pickem_fetch_slate($week = NULL) {
 	$query->orderBy('g.game_date');
 	
 	$query->condition('s.slate_id', $week);
+	$query->limit(25);
 	$result = $query->execute();
 	return $result;
 }
@@ -428,7 +513,29 @@ function pickem_games_listing($form, &$form_state, $objtype = NULL, $objval = NU
 			'classes' => $game_classes,
 		);
 		if (path_is_admin(current_path())) {
-			$row['data'][] = $record->slate_game_id ? 'Remove from Slate' : 'Add To Slate';
+			$linktext = $record->slate_game_id ? 'Remove from Slate' : 'Add To Slate';
+			$linkpath = $record->slate_game_id ? 'remove' : 'add';
+			$row['data'][] = array(
+				'data' => array(
+					'#type' => 'link',
+					'#title' => t($linktext),
+					'#href' => 'pickem/ajax/slate/' . $linkpath . '/' . $record->gid,
+					'#ajax' => array(
+						'wrapper' => 'slateCell-' . $record->gid,
+						'method' => 'html',
+					),
+				),
+				'id' => 'slateCell-' . $record->gid,
+			);
+			/*
+			$row['data'][] = '<div id="slateCell-' . $record->gid . '">' . l(t($linktext), 'pickem/ajax/slate/' . $linkpath . '/' . $record->gid, 
+				array(
+					'attributes' => array(
+						'class' => array('slateTrigger','use-ajax')
+					)
+				)
+			) . '</div>';
+			*/
 		}
 		$rows[] = $row;
 		#kpr($record);
@@ -445,6 +552,82 @@ function pickem_games_listing($form, &$form_state, $objtype = NULL, $objval = NU
 	return $form;
 }
 
+function pickem_ajax_slate_add($gid) {
+	// got a game id -- let's add the game to the slate..
+	$game = pickem_load_game($gid);
+	$o = new stdClass();
+	$o->pid = 1;
+	$o->gid = $gid;
+	$o->season = $game->season;
+	$o->slate_id = $game->week;
+	$res = drupal_write_record('slate', $o);
+	
+	$commands = array();
+	$msg = "Remove from Slate";
+	if ($res == FALSE) {
+		$commands[] = ajax_command_append('#slateCell-' . $gid, t('Unable to add to slate!'));
+	} else {
+		$output = array(
+			'#type' => 'link',
+			'#title' => t($msg),
+			'#href' => 'pickem/ajax/slate/remove/' . $gid,
+			'#attributes' => array('class' => array('use-ajax', 'slateTrigger')),
+			'#ajax' => array(
+				'wrapper' => 'slateCell-' . $gid,
+				'method' => 'html',
+			),
+		);
+		$commands[] = ajax_command_html('#slateCell-' . $gid, render($output));
+	}
+	// See ajax_example_advanced.inc for more details on the available commands
+	// and how to use them.
+	$page = array(
+		'#type' => 'ajax',
+		'#commands' => $commands,
+	);
+	ajax_deliver($page);
+}
+
+function pickem_ajax_slate_remove($gid) {
+	$result = db_query('SELECT s.* FROM {slate} s WHERE gid = :gid', array(':gid' => $gid));
+	$slate = $result->fetchObject();
+	$game = pickem_load_game($gid);
+	$default_conf_name = variable_get('pickem.default_conference');
+	$protected_schools = variable_get('pickem.protected_schools');
+	$commands = array();
+	#if ($game->host_conf_name == $default_conf_name || 
+	#		$game->visiting_conf_name == $default_conf_name) {
+	if (in_array($default_conf_name, array($game->host_conf_name, $game->visiting_conf_name))) {
+		$commands[] = ajax_command_alert(t("Games involving ACC schools cannot be removed from the slate."));
+	} else if (in_array($game->host_school_name, $protected_schools) || 
+						 in_array($game->visiting_school_name, $protected_schools)) {
+		$commands[] = ajax_command_alert(t('Games involving protected schools cannot be removed from the slate.'));
+	} else {
+		$num_deleted = db_delete('slate')
+			->condition('gid', $gid)
+			->condition('pid', '1')
+			->execute();
+
+		$msg = "Add to Slate";
+		$output = array(
+			'#type' => 'link',
+			'#title' => t($msg),
+			'#href' => 'pickem/ajax/slate/add/' . $gid,
+			'#attributes' => array('class' => array('use-ajax', 'slateTrigger')),
+			'#ajax' => array(
+				'wrapper' => 'slateCell-' . $gid,
+				'method' => 'html',
+			),
+		);
+		$commands[] = ajax_command_html('#slateCell-' . $gid, render($output));
+	}
+	$page = array(
+		'#type' => 'ajax',
+		'#commands' => $commands,
+	);
+	ajax_deliver($page);
+}
+
 function pickem_permission() {
 	return array(
 		'administer pickem settings' => array(
@@ -456,6 +639,7 @@ function pickem_permission() {
 			'description' => t('Perform administration tasks on Pickem games'),
 		),
 		'pickem player' => array(
+			'title' => t('Make picks in the pickem contest'),
 			'description' => t('Can play the pickem content(s)'),
 		),
 	);
@@ -463,21 +647,4 @@ function pickem_permission() {
  
 function pickem_block_info($delta='') {
 	return array();
-}
-
-function pickem_load_conferences($p5 = TRUE) {
-	$query = db_select('conference', 's')->extend('PagerDefault')->extend('TableSort');
-	$query->fields('s');
-	if ($p5) {
-		$query->condition('name', array('acc','big10','big12','pac12','sec','ind'), 'IN');
-	}
-	$result = $query->execute();
-	$rows = array();
-	while ($c = $result->fetchObject()) {
-		$rows[] = $c;
-	}
-	return $rows;
-}		
-
-function pickem_load_weeks() {
 }

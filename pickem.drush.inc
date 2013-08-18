@@ -8,12 +8,27 @@ function pickem_drush_command() {
 		'aliases' => array('pklines'),
 		'bootstrap' => DRUSH_BOOTSTRAP_FULL,
 	);
+	$items['load-conf-games'] = array(
+		'description' => 'Load games for a conference',
+		'aliases' => array('lcgames'),
+		'bootstrap' => DRUSH_BOOTSTRAP_FULL,
+		'arguments' => array(
+			'conf' => 'The (machine) name of the conference',
+		),
+	);
 
 	return $items;
 }
 
+function drush_pickem_load_conf_games($conf) {
+	require_once(drupal_get_path('module', 'pickem') . '/pickem.install');
+	$filename = $conf.'games.tsv';
+	drush_print('Loading games for conference: ' . $conf);
+	_pickem_install_initial_games($filename);
+}
+
 function drush_pickem_load_lines() {
-	$xmlurl = drupal_get_path('module', 'pickem') . '/data/ncaalines-2013-1.xml';
+	$xmlurl = drupal_get_path('module', 'pickem') . '/data/ncaalines.xml';
 	$content = file_get_contents($xmlurl);
 
 	$items = array();
@@ -32,8 +47,8 @@ function drush_pickem_load_lines() {
 		# get the schools involved
 		$matches = array();
 		$bool = preg_match('/^\[.+\]\s*(?P<team1>\w+)(\([Nn]\))*\s@\s(?P<team2>\w+)(\([nN]\))*$/', $game_title, $matches);
-		drush_print($game_title);
-		drush_print_r($matches);
+		#drush_print($game_title);
+		#drush_print_r($matches);
 
 		$result = db_query('SELECT name, sportsbook_name FROM {school} where sportsbook_name = :sbname', array(':sbname' => $matches['team1']));
 		$team1 = $result->fetchObject();
@@ -42,8 +57,7 @@ function drush_pickem_load_lines() {
 		$team2 = $result->fetchObject();
 		$opponents[$team2->sportsbook_name] = $team2;
 
-		$bool = preg_match('/^(?P<favorite>\w+)\s(?P<bline>.+)\s.+$/', $item_desc, $bline_matches);
-		drush_print_r($bline_matches);
+		$bool = preg_match('/^(?P<favorite>\w+)(\([nN]\))*\s(?P<bline>.+)\s.+$/', $item_desc, $bline_matches);
 		drush_print_r($team1);
 		drush_print_r($team2);
 
@@ -56,12 +70,15 @@ function drush_pickem_load_lines() {
 		if ($o) {
 			$favorite = $bline_matches['favorite'];
 			$bline = $bline_matches['bline'];
+			
 			$favoriteSchool = $opponents[$favorite]->name;
-			$o->betting_line = ($o->host_school_name == $favoriteSchool) ? 'h:' . $bline : 'v:' . $bline;
+			drush_print("%%%%%%%% favorite school is [" . $favoriteSchool . "] %%%%%%%%%%%%");
+			#$o->betting_line = ($o->host_school_name == $favoriteSchool) ? 'h:' . $bline : 'v:' . $bline;
+			$o->betting_line = $favoriteSchool . ':' . trim($bline);
 			drupal_write_record('game', $o, 'gid');
-			drush_print_r($o);
 		} else {
-			drush_print('No fetched data');
+			#drush_print('No fetched data');
+			#drush_print_r($bline_matches);
 		}	
 	}	
 }	

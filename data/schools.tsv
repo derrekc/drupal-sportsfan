@@ -40,7 +40,7 @@ Illinois	Illinois	illinois	Fighting Illini	big10	Leaders
 Indiana	Indiana	indiana	Hoosiers	big10	Leaders
 Iowa	Iowa	iowa	Hawkeyes	big10	Legends
 Michigan	Michigan	michigan	Wolverines	big10	Legends
-Michigan State	Michigan State	michstate	Spartans	big10	Legends	MichiganSt
+Michigan State	Michigan State	michiganstate	Spartans	big10	Legends	MichiganSt
 Minnesota	Minnesota	minnesota	Golden Gophers	big10	Legends	MinnesotaU
 Nebraska	Nebraska	nebraska	Cornhuskers	big10	Legends
 Northwestern	Northwestern	northwestern	Wildcats	big10	Legends
@@ -126,17 +126,32 @@ Brigham Young	BYU	byu	Cougars	ind		BYU
 Idaho	Idaho	idaho	Vandals	ind	
 New Mexico State	New Mexico State	newmexicostate	Aggies	ind		NewMexicoSt
 Old Dominion	Old Dominion	olddominion	Monarchs	ind	
+UNC-Charlotte	Charlotte	charlotte	49ers	ind	
 Presbyterian	Presbyterian	presbyterian	Blue Hose	bigsouth	
+Liberty	Liberty	liberty	Flames	bigsouth	
+Gardner-Webb	Gardner-Webb	gardnerwebb	Bulldogs	bigsouth	
+Campbell	Campbell	campbell	Camels	bigsouth	
 Elon	Elon	elon	Phoenix	socon	
 North Carolina Central	NC Central	nccu	Eagles	meac	
+Howard	Howard	howard	Bison	meac	
 South Carolina State	South Carolina State	scstate	Bulldogs	meac	
+North Carolina A&T	North Carolina A&T	northcarolina_at	Aggies	meac	
 Florida A&M	Florida A&M	floridaam	Rattlers	meac	
+Morgan State	Morgan State	morganstate	Bears	meac	
 Western Carolina	Western Carolina	westerncarolina	Catamounts	socon	
 The Citadel	The Citadel	citadel	Bulldogs	socon	
 Bethune-Cookman	Bethune-Cookman	bethunecookman	Wildcats	meac	
 Alabama A&M	Alabama A&M	alabama_am	Bulldogs	swac	
+Jackson State	Jackson State	jacksonstate	Tigers	swac	
+Southern	Southern	southern	Jaguars	swac	
+Arkansas-Pine Bluff	Arkansas-Pine Bluff	arkansaspinebluff	Lions	swac	
+Prairie View A&M	Prairie View A&M	prairieview_am	Panthers	swac	
 Savannah State	Savannah State	savannahstate	Tigers	meac	
+Norfolk State	Norfolk State	norfolkstate	Spartans	meac	
 Richmond	Richmond	richmond	Spiders	caa	
+Villanova	Villanova	villanova	Wildcats	caa	
+Maine	Maine	maine	Black Bears	caa	
+Towson	Towson	towson	Tigers	caa	
 Wagner	Wagner	wagner	Seahawks	northeast	
 Virginia Military Institute	VMI	vmi	Keydets	socon	
 Chattanooga	Chattanooga	chattanooga	Mocs	socon	
@@ -144,18 +159,28 @@ Georgia Southern	Georgia Southern	georgiasouthern	Eagles	socon
 Appalachian State	Appalachian State	appalachianstate	Mountaineers	socon	
 Furman	Furman	furman	Palladins	socon	
 Wofford	Wofford	wofford	Terriers	socon	
+Samford	Samford	samford	Bulldogs	socon	
 Southeast Missouri State	SE Missouri State	southeastmissouristate	Redhawks	ovc	
 Alcorn State	Alcorn State	alcornstate	Braves	swac	
 Murray State	Murray State	murraystate	Racers	ovc	
 Tennessee Tech	Tennessee Tech	tennesseetech	Golden Eagles	ovc	
+UT-Martin	UT-Martin	tennmartin	Skyhawks	ovc	
+Eastern Illinois	Eastern Illinois	easternillinois	Panthers	ovc	
+Eastern Kentucky	Eastern Kentucky	easternkentucky	Colonels	ovc	
+Jacksonville State	Jacksonville State	jacksonvillestate	Gamecocks	ovc	
 Coastal Carolina	Coastal Carolina	coastalcarolina	Chanticleers	bigsouth	
 Austin Peay	Austin Peay	austinpeay	Governors	ovc	
 Sam Houston State	Sam Houston State	samhoustonstate	Bearkats	southland	
+Central Arkansas	Central Arkansas	centralarkansas	Bears	southland	
 Lamar	Lamar	lamar	Cardinals	southland	
+Nicholls State	Nicholls State	nichollsstate	Colonels	southland	
+Northwestern State	Northwestern State	northwesternstate	Demons	southland	
+McNeese State	McNeese State	mcneesestate	Cowboys	southland	
 Northern Iowa	Northern Iowa	northerniowa	Panthers	mvc	
 South Dakota	South Dakota	southdakota	Coyotes	mvc	
 North Dakota State	North Dakota State	northdakotastate	Bison	mvc	
 Western Illinois	Western Illinois	westernillinois	Leathernecks	mvc	
+Illinois State	Illinois State	illinoisstate	Redbirds	mvc	
 Indiana State	Indiana State	indianastate	Sycamores	mvc	
 Youngstown State	Youngstown State	youngstownstate	Penguins	mvc	
 Southern Illinois	Southern Illinois	southernillinois	Salukis	mvc	
@@ -163,3 +188,21 @@ Missouri State	Missouri State	missouristate	Bears	mvc
 Southeastern Louisiana	Southeastern Louisiana	southeasternlouisiana	Lions	southland	
 Stephen F. Austin	Stephen F. Austin	stephenfaustin	Jacks	southland	
 William & Mary	William & Mary	williammary	Tribe	caa	
+James Madison	James Madison	jamesmadison	Dukes	caa	
+Stony Brook	Stony Brook	stonybrook	Seawolves	caa	
+New Hampshire	New Hampshire	newhampshire	Wildcats	caa	
+Montana State	Montana State	montanastate	Bobcats	bigsky	
+Montana	Montana	montana	Grizzlies	bigsky	
+Northern Arizona	Northern Arizona	northernarizona	Lumberjacks	bigsky	
+Northern Colorado	Northern Colorado	northerncolorado	Bears	bigsky	
+Sacramento State	Sacramento State	sacramentostate	Hornets	bigsky	
+Eastern Washington	Eastern Washington	easternwashington	Eagles	bigsky	
+Portland State	Portland State	portlandstate	Vikings	bigsky	
+Weber State	Weber State	weberstate	Wildcats	bigsky	
+Southern Utah	Southern Utah	southernutah	Thunderbirds	bigsky	
+Idaho State	Idaho State	idahostate	Bengals	bigsky	
+Cal Poly	Cal Poly	calpoly	Mustangs	bigsky	
+UC Davis	UC Davis	cal-davis	Aggies	bigsky	
+Fordham	Fordham	fordham	Rams	patriot	
+Colgate	Colgate	colgate	Raiders	patriot	
+Jacksonville	Jacksonville	jacksonville	Dolphins	pioneer	

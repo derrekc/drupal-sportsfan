@@ -1,15 +1,44 @@
 <?php
 
 ?>
-<h4>
-	<?php print $game->visiting_school; ?>
-	<?php if (!empty($game->bline) && ($game->visiting_school_name == $game->bline[0])): ?>
-		<?php print ' (' . $game->bline[1] . ')'; ?>
+<?php global $user; ?>
+
+<div class="pickslate-entry">
+	<div class="result-kickoff">
+		<?php if($game->completed == 'Y'): ?>
+			<span class="label">
+			<?php print "FINAL"; ?>
+			<?php if (!empty($game->title_data['overtimes'])): ?>
+				<?php print ' - ' . $game->title_data['overtimes']; ?>
+			<?php endif; ?>
+			</span>
+		<?php else: ?>
+			<span><?php print $game->game_date_str . ', ' . $game->kickoff_time; ?> | <?php print $game->location; ?></span>
+		<?php endif; ?>
+	</div>
+	<div class="opponent clearfix">
+		<div class="logo border-hairline"><img src="<?php print $logobasepath . $game->title_data['visiting_school_name'] . '.gif'; ?>" width="35" /></div>
+		<div class="school_title">
+			<?php print $game->title_data['visiting_school']; ?>
+			<span class="badge"><?php print $game->title_data['visiting_school_bline']; ?></span>
+		</div>
+		<div class="score text-right clearfix"><?php print $game->title_data['visiting_score']; ?></div>
+	</div>
+	<div class="opponent clearfix">
+		<div class="logo border-hairline"><img src="<?php print $logobasepath . $game->title_data['host_school_name'] . '.gif'; ?>" width="35" /></div>
+		<div class="school_title">
+			<?php print $game->title_data['host_school']; ?>
+			<span class="badge"><?php print $game->title_data['host_school_bline']; ?></span>
+		</div>
+		<div class="score text-right clearfix"><?php print $game->title_data['host_score']; ?></div>
+	</div>
+</div>
+
+<?php if(!$game->pickIsOpen): ?>
+<div class="pick-result text-right"><strong>Your Pick: </strong> 
+	<?php print $game->userpick_school; ?>
+	<?php if ($game->completed == 'Y'): ?>
+	<span class="label <?php print $game->title_data['label_class']; ?>"><?php print $game->title_data['pick_result']; ?></span>
 	<?php endif; ?>
-	<?php print $game->vs_at_symbol; ?>
-	<?php print $game->host_school; ?>
-	<?php if (!empty($game->bline) && ($game->host_school_name == $game->bline[0])): ?>
-		<?php print ' (' . $game->bline[1] . ')'; ?>
-	<?php endif; ?>
-</h4>
-<span><?php print $game->game_date_str; ?> | Kickoff: <?php print $game->kickoff_time; ?></span>
+</div>
+<?php endif; ?>

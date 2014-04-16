@@ -9,9 +9,6 @@ class PickemManager {
 
 	static $FEEDURL_PREFIX = 'https://spreadsheets.google.com';
 	static $QUERY_STRING = '?alt=json&amp;callback=displayContent';
-
-	// Pull in Master Google Spreadsheet as JSON	
-	$worksheet_content = json_decode(file_get_contents($worksheets_query_url, 0, $context), TRUE);
 	
 	public static function sampleData() {
 

@@ -1,6 +1,6 @@
 <?php
 
-public class PickemManager {
+class PickemManager {
 
 	static $GAMES_SPREADSHEET_KEY = '1M58ubV1mzlTaHWgs0YUIn_X3KRpx-M8zqAehG80lNVg';
 	static $SCHOOLS_SPREADSHEET_KEY = '1mp_TDlGqvrYZssn_1mU6hLfoekvnWeH-LsYHMRfax6o';
@@ -9,7 +9,6 @@ public class PickemManager {
 
 	static $FEEDURL_PREFIX = 'https://spreadsheets.google.com';
 	static $QUERY_STRING = '?alt=json&amp;callback=displayContent';
-	
 
 	// Pull in Master Google Spreadsheet as JSON	
 	$worksheet_content = json_decode(file_get_contents($worksheets_query_url, 0, $context), TRUE);
@@ -36,7 +35,6 @@ public class PickemManager {
 		$worksheetEntries = $worksheet_content['feed']['entry'];
 
 		$schedKey = $this::gs_scheduleForTitle('acc');
-		
 	}
 
 	public static function gs_scheduleForTitle($key) {

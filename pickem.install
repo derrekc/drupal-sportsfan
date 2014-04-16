@@ -35,10 +35,9 @@ function pickem_install() {
 	_pickem_load_conferences();
 	_pickem_load_schools();
 	
-	
 	foreach(array('acc','sec','big12','big10') as $conf) {
-			$filename = $conf.'games.tsv';
-			_pickem_install_initial_games($filename);
+		$filename = $conf.'games.tsv';
+		_pickem_install_initial_games($filename);
 	}
 }
 

@@ -133,8 +133,9 @@ function pickem_admin_access() {
 }
 
 function pickem_picks($week = NULL) {
+	require_once(drupal_get_path('model', 'pickem') . '/pickem.model.picks.inc');
 	$sampleData = PickemManager::sampleData();
-	dpm(sampleData);
+	dpm($sampleData);
 
 	return '';
 }

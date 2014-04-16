@@ -1,0 +1,5 @@
+name = SportSched Charts
+description = Charts produced by data from the sports database
+core = 7.x
+package = decro Sports UI
+dependencies[] = pickem

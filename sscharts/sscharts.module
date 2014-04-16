@@ -1,0 +1,20 @@
+<?php
+
+/**
+ * Implements hook_theme()
+ */
+function sscharts_theme() {
+	return array(
+		'treechart' => array(
+			'variables' => array('data' => NULL),
+			'template' => 'treechart',
+		)	
+	);
+}
+
+/**
+ * Implements hook_menu()
+ */
+function sscharts_menu() {
+	return array();
+}

@@ -36,7 +36,7 @@ function pickem_school_listing($conf = NULL) {
 	
 	while($record = $result->fetchObject()) {
 		if (pickem_can_show_schedule_link($record->name, $record->conf_name)) {
-			$schedule = l(t('2013 Schedule'), 'schedule/' . $record->name);
+			$schedule = l(t('2013 Schedule'), 'schedule/ncaaf/' . $record->name);
 		} else {
 			$schedule = '';
 		}
@@ -73,11 +73,11 @@ function pickem_school_listing($conf = NULL) {
 /** 
  * THIS IS THE SCHEDULE function for a school
  */
-function pickem_school_slate($school) {
+function pickem_school_slate($school, $sport = 'ncaaf') {
 	//return $school->displaytitle;
-	
+	$season = variable_get('pickem.current_season');
 	$result = db_query('SELECT week FROM {week} w WHERE season = :season AND week <= 15 ORDER by week',
-		array(':season' => variable_get('pickem.current_season')));
+		array(':season' => $season));
 
 	drupal_set_title(variable_get('pickem.current_season') . ' ' . $school->displaytitle . ' ' . $school->nickname . ' Football Schedule');
 		
@@ -86,12 +86,13 @@ function pickem_school_slate($school) {
 	}
 	
 	$header = array(
-		t('Week #'),
+		t('Wk'),
 		t(''),
 		t('Opponent'),
 		t('Date'),
-		t('In Pickem<br />Slate?'),
 		t('Kickoff/Result'),
+		t('Location'),
+		t('In Pickem<br />Slate?'),
 	);
 	$rows = array();
 	while($week = $result->fetchObject()) {
@@ -103,11 +104,11 @@ function pickem_school_slate($school) {
 				$opp_cell .= '&nbsp;';
 			}
 			if (pickem_can_show_schedule_link($game->opponent_school_name, $game->opponent_conf_name)) {
-				$opp_cell .= '<strong>' . l($game->opponent_school, 'schedule/' . $game->opponent_school_name) . '</strong>';
+				$opp_cell .= '<strong>' . l($game->opponent_school, 'schedule/' . $sport . '/' . $game->opponent_school_name) . '</strong>';
 			} else {
 				$opp_cell .= '<strong>' . $game->opponent_school . '</strong>';
 			}
-			$opp_cell .= '<br /><small>' . $game->location . '</small>';
+			//$opp_cell .= '<br /><small>' . $game->location . '</small>';
 			$logo_cell = '<img src="/' . drupal_get_path('module', 'pickem') 
 				. '/logos/ncaaf/' . $game->opponent_school_name . '.gif" width="50" />';
 			$slate_cell = $game->slate_id != '' ? '<i class="icon-check" title="Included in Pickem Slate"></i>' : '';
@@ -117,8 +118,9 @@ function pickem_school_slate($school) {
 					array('data' => $logo_cell, 'width' => 55),
 					t($opp_cell),
 					$game->game_date_str,
+					($game->completed == 'Y') ? $game->result : $game->kickoff_time,
+					$game->location,
 					$slate_cell,
-					''
 				),
 			);
 		} else {
@@ -128,7 +130,7 @@ function pickem_school_slate($school) {
 				'data' => array(
 					$week->week,
 					'',
-					array('data' => 'BYE', 'colspan' => 4),
+					array('data' => 'BYE', 'colspan' => 5),
 				),
 			);
 		}
@@ -147,11 +149,95 @@ function pickem_school_slate($school) {
 			'class' => array(
 				'table', 
 				'table-hover',
-				'table-condensed',
-				'table-bordered',
+				//'table-condensed',
+				//'table-bordered',
 			)
 		),
 	);
+	$build['timezone-info'] = array(
+		'#type' => 'markup',
+		'#markup' => t('All times ET'),
+	);
+	
+	$standings = pickem_load_conf_standings($school->conf_name, $season, $sport);
+	$stats = pickem_load_school_stats($school->name, $season, $sport);
+	#dpm($standings);
+
+	$header = array(
+		'',
+		array('data' => t('Conf'), 'colspan' => 3),
+		array('data' => t('Ovr'), 'colspan' => 3),
+		t('Next Game'),
+	);
+	$subheader = array(
+		array('data' => t('School'), 'header' => TRUE,),
+		array('data' => t('W'), 'header' => TRUE),
+		array('data' => t('L'), 'header' => TRUE),
+		array('data' => t('%'), 'header' => TRUE),
+		array('data' => t('W'), 'header' => TRUE),
+		array('data' => t('L'), 'header' => TRUE),
+		array('data' => t('%'), 'header' => TRUE),
+		array('data' => '', 'header' => TRUE),
+	);
+	
+	if ($standings['has_divisions']) {
+		unset($standings['has_divisions']);
+		foreach ($standings['divisions'] as $div_name => $items) {
+			$rows = array();
+			$rows[] = $subheader;
+			foreach ($items as $item) {
+				$row = array();
+				$row[] = $item['school'];
+				$row[] = $item['cwins'];
+				$row[] = $item['closses'];
+				$row[] = number_format($item['cpct'], 3);
+				$row[] = $item['wins'];
+				$row[] = $item['losses'];
+				$row[] = number_format($item['pct'], 3);
+				$row[] = '';
+				$rows[] = array('data' => $row);
+				if ($item['school_name'] == $school->name) {
+					$rows[count($rows)-1]['class'] = array('info');
+				}
+			}
+			$build['standings'][$div_name] = array(
+				'#theme' => 'table',
+				'#header' => $header,
+				'#rows' => $rows,
+				'#caption' => t($div_name . ' Division'),
+				'#attributes' => array(
+					'class' => array('table', 'table-condensed'),
+				)
+			);
+		}
+	} else {
+		unset($standings['has_divisions']);
+		$rows = array();
+		$rows[] = $subheader;
+		foreach ($standings as $item) {
+			$row = array();
+			$row[] = $item['school'];
+			$row[] = $item['cwins'];
+			$row[] = $item['closses'];
+			$row[] = number_format($item['cpct'], 3);
+			$row[] = $item['wins'];
+			$row[] = $item['losses'];
+			$row[] = number_format($item['pct'], 3);
+			$row[] = '';
+			$rows[] = array('data' => $row);
+			if ($item['school_name'] == $school->name) {
+				$rows[count($rows)-1]['class'] = array('info');
+			}
+			$build['standings'] = array(
+				'#theme' => 'table',
+				'#header' => $header,
+				'#rows' => $rows,
+				'#attributes' => array(
+					'class' => array('table', 'table-condensed'),
+				)
+			);
+		}
+	}
 	return $build;
 }
 

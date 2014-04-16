@@ -195,6 +195,7 @@ function _pickem_install_initial_games($fname) {
  * @return array
  */
 function pickem_schema() {
+	
 	return array(
 		'school' => array(
 			'description' => 'Table of schools in college football',
@@ -257,6 +258,12 @@ function pickem_schema() {
 					'not null' => TRUE,
 					'default' => '',
 				),
+				'name' => array(
+					'type' => 'varchar',
+					'length' => 35,
+					'not null' => TRUE,
+					'default' => '',
+				),
 				'season' => array(
 					'type' => 'int',
 					'unsigned' => TRUE,
@@ -311,6 +318,7 @@ function pickem_schema() {
 				'correct' => array('type' => 'char','size' => 1,'default' => NULL,),
 				'week' => array('type' => 'int','size' => 'tiny','unsigned' => TRUE,'not null' => TRUE,'default' => 0,),
 				'season' => array('type' => 'int','unsigned' => TRUE,'not null' => TRUE,'default' => 0,),
+				'pickem_id' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0,),
 			),
 			'primary key' => array('pkid'),
 			'foreign keys' => array(
@@ -322,6 +330,44 @@ function pickem_schema() {
 					'table' => 'school',
 					'columns' => array('pick_school_name' => 'machine_name'),
 				),
+			),
+		),
+		'school_records' => array(
+			'fields' => array(
+				'sid' => array('type' => 'int','not null' => TRUE,'unsigned' => TRUE,),
+				'school_name' => array('type' => 'varchar','length' => 35,'not null' => TRUE,'default' => '',),
+				'season' => array('type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'not null' => TRUE,),
+				'sport' => array('type' => 'varchar','size' => 12,'not null' => TRUE,'default' => '',),
+				'wins' => array('type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'default' => 0,),
+				'losses' => array('type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'default' => 0,),
+				'ties' => array('type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'default' => 0,),
+				'tag' => array('type' => 'varchar', 'length' => 15, 'not null' => TRUE, 'default' => 0,),
+			),
+			'primary key' => array('sid','season','sport','tag'),
+			'indexes' => array(
+				'sport' => array(array('sport', 5)),
+				'school_name' => array(array('school_name', 6)),
+				'tag' => array(array('tag', 5)),
+			),
+		),
+		'school_points' => array(
+			'fields' => array(
+				'sid' => array('type' => 'int','not null' => TRUE,'unsigned' => TRUE,),
+				'school_name' => array('type' => 'varchar','length' => 35,'not null' => TRUE,'default' => '',),
+				'season' => array('type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'not null' => TRUE,),
+				'sport' => array('type' => 'varchar','size' => 12,'not null' => TRUE,'default' => '',),
+				'pf' => array('type' => 'int', 'size' => 'medium', 'unsigned' => TRUE, 'default' => 0,),
+				'pa' => array('type' => 'int', 'size' => 'medium', 'unsigned' => TRUE, 'default' => 0,),
+				'gp' => array('type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'default' => 0,),
+				'ppg' => array('type' => 'float', 'default' => 0.0,),
+				'ppa' => array('type' => 'float', 'default' => 0.0,),
+				'tag' => array('type' => 'varchar', 'length' => 15, 'not null' => TRUE, 'default' => '',),
+			),
+			'primary key' => array('sid','season','sport','tag'),
+			'indexes' => array(
+				'sport' => array(array('sport', 5)),
+				'school_name' => array(array('school_name', 6)),
+				'tag' => array(array('tag', 5)),
 			),
 		),
 		'tiebreaker' => array(
@@ -376,97 +422,31 @@ function pickem_schema() {
 					'not null' => TRUE,
 					'default' => 0,	
 				),
+				'pickem_id' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0,),
 			),
+			'primary key' => array('season', 'week', 'pickem_id'),
 		),
 		'game' => array(
 			'fields' => array(
-				'gid' => array(
-					'type' => 'serial',
-					'unsigned' => TRUE,
-					'not null' => TRUE
-				),
-				'title' => array(
-					'type' => 'title',
-					'length' => 255,
-				),
-				'game_date' => array(
-					'type' => 'int',
-					'not null' => FALSE,
-					'default' => 0,
-				),
-				'week' => array(
-					'type' => 'int',
-					'size' => 'tiny',
-					'unsigned' => TRUE,
-					'not null' => TRUE,
-					'default' => 0,
-				),
-				'season' => array(
-					'type' => 'int',
-					'not null' => TRUE,
-					'default' => 0,
-				),
-				'host_school_name' => array(
-					'type' => 'varchar',
-					'length' => 35,
-				),
-				'visiting_school_name' => array(
-					'type' => 'varchar',
-					'length' => 35,
-				),
-				'host_score' => array(
-					'type' => 'int',
-					'size' => 'tiny',
-					'unsigned' => TRUE,
-				),
-				'visiting_score' => array(
-					'type' => 'int',
-					'size' => 'tiny',
-					'unsigned' => TRUE,
-				),
-				'winning_school_name' => array(
-					'type' => 'varchar',
-					'length' => 35,
-				),
-				'host_conf_name' => array(
-					'type' => 'varchar',
-					'length' => 15,
-				),
-				'visiting_conf_name' => array(
-					'type' => 'varchar',
-					'length' => 15,
-				),
-				'neutral' => array(
-					'type' => 'char',
-					'size' => 1,
-					'not null' => TRUE,
-					'default' => 'N',
-				),
-				'location' => array(
-					'type' => 'varchar',
-					'size' => 128,
-				),
-				'sport' => array(
-					'type' => 'varchar',
-					'size' => 12,
-					'not null' => TRUE,
-					'default' => '',
-				),
-				'betting_line' => array(
-					'type' => 'varchar',
-					'length' => '50',
-				),
-				'completed' => array(
-					'type' => 'char',
-					'size' => 1,
-					'not null' => TRUE,
-					'default' => 'N',
-				),
-				'overtimes' => array(
-					'type' => 'int',
-					'unsigned' => TRUE,
-					'size' => 'tiny',
-				),
+				'gid' => array('type' => 'serial','unsigned' => TRUE,'not null' => TRUE),
+				'title' => array('type' => 'title','length' => 255,),
+				'game_date' => array('type' => 'int','not null' => FALSE,'default' => 0,),
+				'week' => array('type' => 'int','size' => 'tiny','unsigned' => TRUE,'not null' => TRUE,'default' => 0,),
+				'season' => array('type' => 'int','not null' => TRUE,'default' => 0,),
+				'host_school_name' => array('type' => 'varchar','length' => 35,),
+				'visiting_school_name' => array('type' => 'varchar','length' => 35,),
+				'host_score' => array('type' => 'int','size' => 'tiny','unsigned' => TRUE,),
+				'visiting_score' => array('type' => 'int','size' => 'tiny','unsigned' => TRUE,),
+				'winning_school_name' => array('type' => 'varchar','length' => 35,),
+				'host_conf_name' => array('type' => 'varchar','length' => 15,),
+				'visiting_conf_name' => array('type' => 'varchar','length' => 15,),
+				'neutral' => array('type' => 'char','size' => 1,'not null' => TRUE,'default' => 'N',),
+				'location' => array('type' => 'varchar','size' => 128,),
+				'sport' => array('type' => 'varchar','size' => 12,'not null' => TRUE,'default' => '',),
+				'betting_line' => array('type' => 'varchar','length' => '50',),
+				'completed' => array('type' => 'char','size' => 1,'not null' => TRUE,'default' => 'N',),
+				'overtimes' => array('type' => 'int','unsigned' => TRUE,'size' => 'tiny',),
+				'stats_processed' => array('type' => 'int', 'default' => 0,),
 			),
 			'indexes' => array(
 				'host_school' => array(array('host_school_name', 5)),
@@ -631,22 +611,13 @@ function pickem_schema() {
 		'pickem_player' => array(
 			'description' => 'Player info',
 			'fields' => array(
-				'uid' => array(
-					'type' => 'int',
-					'unsigned' => TRUE,
-					'not null' => TRUE,
-				),
-				'player_level' => array(
-					'type' => 'varchar',
-					'length' => '15',
-					'default' => 'active_full',
-				),
-				'games_picked' => array(
-					'type' => 'int',
-					'default' => 0,
-				),
+				'uid' => array('type' => 'int','unsigned' => TRUE,'not null' => TRUE,),
+				'player_level' => array('type' => 'varchar','length' => '15','default' => 'active_full',),
+				'games_picked' => array('type' => 'int','default' => 0,),
+				'weeks_won' => array('type' => 'int', 'default' => 0,),
+				'pickem_id' => array('type' => 'int', 'not null' => TRUE, 'default' => 0,),
 			),
-			'primary key' => array('uid'),
+			'primary key' => array('uid', 'pickem_id'),
 		),
 		'standings' => array(
 			'description' => 'Standings for the pickems',
@@ -685,9 +656,50 @@ function pickem_schema() {
 					'precision' => 1,
 					'scale' => 3,
 				),
+				'pickem_id' => array(
+					'type' => 'int',
+					'unsigned' => TRUE,
+					'not null' => TRUE,
+					'default' => 0,
+				),
 			),
-			'primary key' => array('season', 'week', 'uid')
+			'primary key' => array('season', 'week', 'uid', 'pickem_id')
 		),
+		'conf_projections' => array(
+			'fields' => array(
+				'pid' => array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE,),
+				'conf_name' => array('type' => 'varchar', 'length' => 15, 'not null' => TRUE, 'default' => '',),
+				'conf_division' => array('type' => 'varchar', 'length' => 25,),
+				'school_name' => array('type' => 'varchar', 'length' => 50, 'not null' => TRUE, 'default' => '',),
+				'num_first_place' => array('type' => 'int', 'size' => 'tiny', 'default' => 0,),
+				'num_second_place' => array('type' => 'int', 'size' => 'tiny', 'default' => 0,),
+				'num_two_way_ties' => array('type' => 'int', 'size' => 'tiny', 'default' => 0,),
+				'who_defeated' => array('type' => 'int', 'size' => 'tiny', 'default' => 0,),
+			),
+			'primary key' => array('pid'),
+			'indexes' => array(
+				'school_name' => array(array('school_name', 6)),
+				'conf_name' => array(array('conf_name', 6)),
+				'conf_division' => array(array('conf_division', 6)),
+			),
+		),
+		'outcome_scenario' => array(
+			'fields' => array(
+				'oid' => array('type' => 'serial', 'not null' => TRUE, 'unsigned' => TRUE,),
+				'scenario' => array('type' => 'varchar', 'length' => 12, 'not null' => TRUE, 'default' => '',),
+				'winner' => array('type' => 'varchar', 'length' => 35, 'not null' => TRUE, 'default' => '',),
+				'how' => array('type' => 'varchar', 'length' => 20,),
+				'teams_in_first' => array('type' => 'varchar', 'length' => 128,),
+				'scene_text' => array('type' => 'text', 'size' => 'big',),
+				'conf_name' => array('type' => 'varchar', 'length' => 15,),
+				'conf_division' => array('type' => 'varchar', 'length' => 25),
+			),
+			'primary key' => array('oid'),
+			'indexes' => array(
+				'scenario' => array(array('scenario', 6)),
+				'how' => array(array('how', 6)),
+			),
+		)
 	);
 }
 
@@ -992,4 +1004,162 @@ function pickem_update_7240() {
  */
 function pickem_update_7250() {
 	_pickem_update_weeks_data();
+}
+
+/**
+ * Add 'weeks_won' column to 'pickem_player' table
+ */
+function pickem_update_7263() {
+	db_add_field('pickem_player', 'weeks_won', array(
+		'type' => 'int',
+		'default' => 0,
+	));
+}
+
+/**
+ * 
+ */
+function pickem_update_7264() {
+	db_add_field('game', 'stats_processed', array(
+		'type' => 'int',
+		'default' => 0,
+	));
+}
+
+/**
+ * 'Add top-25 stats for school_standings table.
+ * 
+ */
+function pickem_update_7265() {
+	db_add_field('school_standings', 'wins_top25', array(
+		'type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'default' => 0,
+	));
+	db_add_field('school_standings', 'losses_top25', array(
+		'type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'default' => 0,
+	));
+}
+
+/**
+ * Recreate records and stats tables
+ * 
+ */
+function pickem_update_7270() {
+	db_drop_table('school_records');
+	db_drop_table('school_points');
+	db_create_table('school_records', array(
+			'fields' => array(
+				'sid' => array('type' => 'int','not null' => TRUE,'unsigned' => TRUE,),
+				'school_name' => array('type' => 'varchar','length' => 35,'not null' => TRUE,'default' => '',),
+				'season' => array('type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'not null' => TRUE,),
+				'sport' => array('type' => 'varchar','size' => 12,'not null' => TRUE,'default' => '',),
+				'wins' => array('type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'default' => 0,),
+				'losses' => array('type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'default' => 0,),
+				'ties' => array('type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'default' => 0,),
+				'tag' => array('type' => 'varchar', 'length' => 15, 'not null' => TRUE, 'default' => 0,),
+			),
+			'primary key' => array('sid','season','sport','tag'),
+			'indexes' => array(
+				'sport' => array(array('sport', 5)),
+				'school_name' => array(array('school_name', 6)),
+				'tag' => array(array('tag', 5)),
+			),
+		)
+	);
+	db_create_table('school_points', array(
+			'fields' => array(
+				'sid' => array('type' => 'int','not null' => TRUE,'unsigned' => TRUE,),
+				'school_name' => array('type' => 'varchar','length' => 35,'not null' => TRUE,'default' => '',),
+				'season' => array('type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'not null' => TRUE,),
+				'sport' => array('type' => 'varchar','size' => 12,'not null' => TRUE,'default' => '',),
+				'pf' => array('type' => 'int', 'size' => 'medium', 'unsigned' => TRUE, 'default' => 0,),
+				'pa' => array('type' => 'int', 'size' => 'medium', 'unsigned' => TRUE, 'default' => 0,),
+				'gp' => array('type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'default' => 0,),
+				'ppg' => array('type' => 'float', 'default' => 0.0,),
+				'ppa' => array('type' => 'float', 'default' => 0.0,),
+				'tag' => array('type' => 'varchar', 'length' => 15, 'not null' => TRUE, 'default' => '',),
+			),
+			'primary key' => array('sid','season','sport','tag'),
+			'indexes' => array(
+				'sport' => array(array('sport', 5)),
+				'school_name' => array(array('school_name', 6)),
+				'tag' => array(array('tag', 5)),
+			),
+		)
+	);
+}
+
+/**
+ * Create tables to store outcomes from ACC projection
+ */
+function pickem_update_7271() {
+	db_create_table('outcome_scenario', array(
+		'fields' => array(
+			'oid' => array('type' => 'serial', 'not null' => TRUE, 'unsigned' => TRUE,),
+			'scenario' => array('type' => 'varchar', 'length' => 12, 'not null' => TRUE, 'default' => '',),
+			'winner' => array('type' => 'varchar', 'length' => 35, 'not null' => TRUE, 'default' => '',),
+			'how' => array('type' => 'varchar', 'length' => 20,),
+			'teams_in_first' => array('type' => 'varchar', 'length' => 128,),
+			'scene_text' => array('type' => 'text', 'size' => 'big',)
+		),
+		'primary key' => array('oid'),
+		'indexes' => array(
+			'scenario' => array(array('scenario', 6)),
+			'how' => array(array('how', 6)),
+		),
+	));
+}
+
+/**
+ * Add 'conf' and 'division' fields to outcome_scenario table
+ */
+function pickem_update_7272() {
+	db_add_field('outcome_scenario', 'conf_name', array(
+		'type' => 'varchar', 'length' => '15',
+	));
+	db_add_field('outcome_scenario', 'conf_division', array(
+		'type' => 'varchar', 'length' => '25',
+	));
+}
+
+/**
+ * Add 'pickem_id' to pickem_player table and changing the primary key.
+ */
+function pickem_update_7273() {
+	db_add_field('pickem_player', 'pickem_id', array(
+		'type' => 'int', 'not null' => TRUE, 'default' => 0,
+	));
+	db_drop_primary_key('pickem_player');
+	db_add_primary_key('pickem_player', array('uid', 'pickem_id'));
+}
+
+function pickem_update_7274() {
+	db_add_field('pick', 'pickem_id', array(
+		'type' => 'int', 'not null' => TRUE, 'default' => 0,
+	));
+	db_add_field('standings', 'pickem_id', array(
+		'type' => 'int', 'not null' => TRUE, 'default' => 0,
+	));
+	db_drop_primary_key('standings');
+	db_add_primary_key('standings', array('season', 'week', 'uid', 'pickem_id'));
+	variable_set('pickem.default_pickem_id', 1);
+}
+
+/**
+ * Add pickem_id to 'week' table, and create the table's primary key (week, pickem_id)
+ */
+function pickem_update_7275() {
+	db_add_field('week', 'pickem_id', array(
+		'type' => 'int', 'not null' => TRUE, 'default' => 0,
+	));
+	db_drop_primary_key('week');
+	db_add_primary_key('week', array('season', 'week', 'pickem_id'));
+}
+
+/**
+ * Add (machine) 'name' column to pickem
+ */
+function pickem_update_7276() {
+	db_add_field('pickem', 'name', array(
+		'type' => 'varchar', 'length' => 35, 'not null' => TRUE, 'default' => '',
+	));	
 }

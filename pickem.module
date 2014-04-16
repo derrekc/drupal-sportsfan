@@ -9,25 +9,29 @@
 require_once(drupal_get_path('module', 'pickem') . '/pickem.model.inc');
 
 function pickem_init() {
-	if (!isset($_SESSION['current_week'])) {
-		$now = time();
-		$query = db_select('week', 'w')
-			->fields('w')
-			->condition('end', $now, '>')
-			->condition('season', variable_get('pickem.current_season', date('Y', $now)))
-			->orderBy('start')
-			->range(0, 1);
-	
-		$result = $query->execute();
-		$current_week = $result->fetchObject();
-		$_SESSION['current_week'] = $current_week;
+	$now = time();
+	$query = db_select('week', 'w')
+		->fields('w')
+		->condition('end', $now, '>')
+		->condition('start', $now, '<=')
+		->condition('season', variable_get('pickem.current_season', date('Y', $now)))
+		->orderBy('start')
+		->range(0, 1);
+
+	$result = $query->execute();
+	$current_week = $result->fetchObject();
+	if (!empty($current_week)) {	
+		if (!isset($_SESSION['current_week']) || $_SESSION['current_week']->week != $current_week->week) {
+			$_SESSION['current_week'] = $current_week;
+			variable_set('pickem.current_week', $current_week->week);
+		}
 	}
 }
 
 function pickem_theme($existing, $type, $theme, $path) {
 	return array(
 		'game_title' => array(
-			'variables' => array('game' => NULL, 'logobasepath' => NULL),
+			'variables' => array('game' => NULL, 'logobasepath' => NULL, 'other_player' => NULL),
 			'template' => 'game_title',
 			'path' => drupal_get_path('module', 'pickem') . '/theme',
 		),
@@ -38,13 +42,19 @@ function pickem_theme($existing, $type, $theme, $path) {
 		),
 		'slate_form' => array(
 			'render element' => 'form',
-			'template' => 'form--game-slate',
-			'path' => drupal_get_path('module', 'pickem') . '/theme',
+			//'template' => 'form--game-slate',
+			'file' => 'pickem.admin.inc',
 		),
 		'admin_scoreboard' => array(
 			'render element' => 'form',
 			'file' => 'pickem.admin.inc',
 		),
+		'slate_overview' => array(
+			'variables' => array('slate' => NULL),
+		),
+		'slate_compare' => array(
+			'variables' => array('slate' => NULL, 'slate_compare' => NULL, 'games' => NULL, 'player_name' => NULL, 'compare_player' => NULL, 'week' => NULL),
+		)
 	);
 }
 
@@ -55,6 +65,13 @@ function pickem_form_alter(&$form, &$form_state, $form_id) {
 	if ($form_id == 'pickem_admin_week_games') {
 		$form['#theme'] = array('admin_scoreboard');
 	}
+}
+
+/**
+ * Implements hook_preprocess_page()
+ */
+function pickem_preprocess_page($variables) {
+	//kpr($variables);
 }
 
 /** 
@@ -75,16 +92,32 @@ function pickem_menu() {
 	$_current_season = variable_get('pickem.current_season');
 	
 	$items = array(
+		'loadgoogle' => array(
+			'title' => 'Fetch From Google',
+			'page callback' => 'pickem_fetch_from_google',
+			'access callback' => TRUE,
+		),
 		# PLAYER/USER specific routes
 		'user/%user/pickemresults' => array(
-			'title' => 'Pickem Results',
+			'title' => 'Pickem Records by School',
 			'file' => 'pickem.player.inc',
 			'page callback' => 'pickem_player_results',
 			'page arguments' => array(1),
-			'access arguments' => array('pickem player'),
+			'access callback' => TRUE,
 			'type' => MENU_LOCAL_TASK,
     	'weight' => 100,		
 		),
+		'user/%user/pickemrecords' => array(
+			'title' => 'Pickem Results by Week',
+			'file' => 'pickem.player.inc',
+			'page callback' => 'pickem_player_records',
+			'page arguments' => array(1),
+			'access callback' => TRUE,
+			'type' => MENU_LOCAL_TASK,
+    	'weight' => 99,		
+		),
+		### END PLAYER/USER specific routes
+		
 		'admin/config/pickem' => array(
 			'title' => 'Pickem Administration',
 			'description' => 'Adjust settings for your Pickem environment',
@@ -133,7 +166,7 @@ function pickem_menu() {
 		'pickem/standings' => array(
 			'title' => 'Pickem Standings',
 			'page callback' => 'pickem_standings_overview',
-			'page arguments' => array('-1'),
+			'page arguments' => array('-1', '1'),
 			'access callback' => TRUE,
 			'type' => MENU_NORMAL_ITEM,
 			'file' => 'pickem.standings.inc',
@@ -154,11 +187,11 @@ function pickem_menu() {
 			'access callback' => TRUE,
 			'file' => 'pickem.school.inc',
 		),
-		'schedule/%pickem_school' => array(
+		'schedule/ncaaf/%pickem_school' => array(
 			'title callback' => 'pickem_school_title',
-			'title arguments' => array(1),
+			'title arguments' => array(2),
 			'page callback' => 'pickem_school_slate',
-			'page arguments' => array(1),
+			'page arguments' => array(2, 1),
 			'access callback' => TRUE,
 			'file' => 'pickem.school.inc',
 		),
@@ -241,20 +274,34 @@ function pickem_menu() {
 			'page callback' => 'drupal_get_form',
 			'page arguments' => array('pickem_slate_listing'),
 			'access callback' => TRUE,
+			'file' => 'pickem.slate.inc',
 		),
-		'pickem/slate-new' => array(
-			'title' => 'Make Your Picks II',
-			'page callback' => 'drupal_get_form',
-			'page arguments' => array('pickem_slate_form'),
-			'access callback' => 'pickem_admin_access',
-			'access arguments' => array('administer pickem settings'),
+		'pickem/load/slate/stats/%' => array(
+			'type' => MENU_CALLBACK,
+			'page callback' => 'pickem_ajax_load_slate_stats',
+			'page arguments' => array(4),
+			'access callback' => TRUE,
 		),
+		//'pickem/slate-new' => array(
+		//	'title' => 'Make Your Picks II',
+		//	'page callback' => 'drupal_get_form',
+		//	'page arguments' => array('pickem_slate_form'),
+		//	'file' => 'pickem.slate.inc',
+		//	'access callback' => FALSE,
+		//	#'access arguments' => array('administer pickem settings'),
+		//),
 		'pickem/slate/all' => array(
 			'title' => 'All',
 			'type' => MENU_LOCAL_TASK,
 			'access callback' => TRUE,
 			'weight' => -10,
 		),
+		'pickem/overview' => array(
+			'title' => 'Pickem Overview',
+			'page callback' => 'pickem_slate_overview',
+			'access callback' => TRUE,
+		),
+		/*
 		'pickem/slate/breakdown' => array(
 			'title' => 'Pick Breakdown',
 			'type' => MENU_LOCAL_ACTION,
@@ -262,6 +309,7 @@ function pickem_menu() {
 			'page callback' => 'pickem_pick_breakdown',
 			'file' => 'pickem.stats.inc',
 		),
+		*/
 		'pickem/ajax/slate/add' => array(
 			'type' => MENU_CALLBACK,
 			'page callback' => 'pickem_ajax_slate_add',
@@ -311,7 +359,7 @@ function pickem_menu() {
 			'weight' => _pickem_menu_weight_for_conf($conf->name),
 		);
 	}
-	$result = db_query('SELECT DISTINCT week FROM {game} WHERE season = :season ORDER BY week LIMIT 16', array(':season' => variable_get('pickem.current_season')));
+	$result = db_query('SELECT DISTINCT week FROM {game} WHERE season = :season ORDER BY week LIMIT 15', array(':season' => variable_get('pickem.current_season')));
 	foreach($result as $week) {
 		$weekkey = sprintf("%2d", $week->week);
 		$items['pickem/slate/'.$week->week] = array(
@@ -319,15 +367,16 @@ function pickem_menu() {
 			'page callback' => 'drupal_get_form',
 			'page arguments' => array('pickem_slate_listing', 2),
 			'access callback' => TRUE,
-			'type' => MENU_LOCAL_TASK,
+			'type' => (isset($_SESSION['current_week']) && $week->week == $_SESSION['current_week']->week) ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
+			'file' => 'pickem.slate.inc',
 		);
 		$items['pickem/scoreboard/update/'.$week->week] = array(
 			'title' => $weekkey,
 			'page callback' => 'drupal_get_form',
-			'page arguments' => array('pickem_admin_week_games'),
+			'page arguments' => array('pickem_admin_week_games', 3),
 			'access callback' => 'pickem_admin_access',
 			'access arguments' => array('administer pickem games', 3),
-			'type' => $week->week == $_SESSION['current_week']->week ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
+			'type' => (isset($_SESSSION['current_week']) && $week->week == $_SESSION['current_week']->week) ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
 			'file' => 'pickem.admin.inc',
 		);
 		$items['pickem/slate/'.$week->week.'/breakdown'] = array(
@@ -337,6 +386,22 @@ function pickem_menu() {
 			'access callback' => 'pickem_player_access',
 			'type' => MENU_LOCAL_ACTION,
 			'file' => 'pickem.stats.inc',
+		);
+		$items['pickem/slate/' . $week->week . '/compare'] = array(
+			'title' => 'Head-to-Head Pick Comparison',
+			'type' => MENU_LOCAL_ACTION,
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('pickem_slate_compare'),
+			'access callback' => TRUE,
+			'file' => 'pickem.slate.inc',
+			'weight' => 100,
+		);
+		$items['pickem/slate/'.$week->week.'/overview'] = array(
+			'title' => 'Pick Overview',
+			'page callback' => 'pickem_slate_overview',
+			'page arguments' => array(2),
+			'access callback' => 'pickem_player_access',
+			'type' => MENU_LOCAL_ACTION,
 		);
 		$items['pickem/standings/'.$week->week] = array(
 			'title' => sprintf("%2d", $week->week),
@@ -362,30 +427,36 @@ function pickem_menu() {
 	return $items;
 }
 
-function pickem_slate_listing_submit($form, $form_state) {
+function pickem_slate_listing_submit2($form, $form_state) {
 	global $user;
 
+	drupal_get_messages(NULL, TRUE);
+	$now = time();
+	
 	foreach ($form_state['values'] as $key => $value) {
 		if (substr($key, 0, 3) == 'gid') {
 			$gid_data = explode('_', $key);
-			if ($form_state['picks'][$gid_data[1]]) {
-				// existing pick -- update
-				$o = $form_state['picks'][$gid_data[1]];
-				$o->pick_school_name = $value['pick_school_name'];
-				$o->season = 2013;
-				drupal_write_record('pick', $o, 'pkid');
+			if ($now < $form_state['cutoff_time'][$gid_data[1]]) {
+				if ($form_state['picks'][$gid_data[1]]) {
+					// existing pick -- update
+					$o = $form_state['picks'][$gid_data[1]];
+					$o->pick_school_name = $value['pick_school_name'];
+					$o->season = 2013;
+					drupal_write_record('pick', $o, 'pkid');
+				} else {
+					// new pick
+					$c = db_insert('pick')
+						->fields(array(
+							'pick_school_name' => $value['pick_school_name'],
+							'uid' => $user->uid,
+							'gid' => $gid_data[1],
+							'week' => $form_state['values']['week'],
+							'season' => '2013',
+						)
+					)->execute();
+				}
 			} else {
-				// new pick
-				$c = db_insert('pick')
-					->fields(array(
-						'pick_school_name' => $value['pick_school_name'],
-						'uid' => $user->uid,
-						'gid' => $gid_data[1],
-						'week' => $form_state['values']['week'],
-						'season' => '2013',
-					)
-				)->execute();
-				#drupal_write_record('pick', $o);
+				drupal_set_message(t('Unable to accept your pick for ' . $value['pick_school_name'] . ' because the deadline has passed.'), 'error');
 			}
 		}
 	}
@@ -399,7 +470,7 @@ function pickem_slate_title($week = NULL) {
 	}
 	return $output;
 }
-
+/*
 function pickem_slate_form($form, &$form_state, $week = NULL) {
 	if ($week == NULL) {
 		$week = $_SESSION['current_week'];
@@ -431,237 +502,7 @@ function pickem_slate_form($form, &$form_state, $week = NULL) {
 function pickem_slate_form_submit($form, $form_state) {
 	dpm($form_state['values']);
 }
-
-function pickem_slate_listing($form, &$form_state, $week = NULL, $player_uid = NULL) {
-	drupal_add_library('system', 'drupal.ajax');
-	global $user;
-	if ($week == NULL) {
-		$week = 1;
-	}
-	$newtitle = drupal_set_title(t(variable_get('pickem.pickem_title','ACCbbs Pickem') . ' - Pick Slate, Week ' . $week));
-	
-	$other_player = NULL;
-	$result = NULL;
-	if ($player_uid) {
-		$userres = db_query('SELECT * FROM {users} WHERE uid = :uid', array(':uid' => $player_uid));
-		$other_player = $userres->fetchObject();
-		$result = pickem_fetch_slate($week, $other_player->uid);
-	} else {
-		$result = pickem_fetch_slate($week);
-	}
-
-	$clearrow = TRUE;
-	$form['week'] = array(
-		'#type' => 'hidden',
-		'#value' => $week,
-	);
-	$form['season'] = array(
-		'#type' => 'hidden',
-		'#value' => variable_get('pickem.current_season'),
-	);
-	# keep track of the number of valid picks
-	$validPicks = 0;
-	$totalGames = 0;
-	$pickCutoffTime = 0;
-	$pickemWeekIsLocked = pickem_is_locked_for_picks($week, variable_get('pickem.current_season'));
-	
-	while($record = $result->fetchObject()) {
-		$totalGames++;
-		if ($totalGames == 1) {
-			// because the games results are sorted by game date, this is a safe
-			// block of coding logic
-			$pickCutoffTime = $record->game_date - (60 * variable_get('pickem.cutoff_minutes', 30));
-		}
-		
-		// GAME TITLE
-		$game_title = $record->visiting_school;
-		if ($record->neutral == 'Y') {
-			$record->vs_at_symbol = ' vs ';
-		} else {
-			$record->vs_at_symbol = ' at ';
-		}
-		$game_title .= $record->host_school;
-		$record->game_title = $game_title;
-
-		// BETTING LINE
-		$record->bline = array();
-		if ($record->betting_line) {
-			$record->bline = explode(':', $record->betting_line);
-		}
-
-		$record->game_date_str = date('M j, Y', $record->game_date);
-		$record->kickoff_time = date('g:i A', $record->game_date);
-		if ($record->kickoff_time == '12:00 AM') {
-			$record->kickoff_time = 'TBA';
-		}
-		$record->game_day = date('D', $record->game_date);
-		
-		// VARIOUS other labels, etc
-		$title_data['visiting_school_rank'] = $record->visiting_school_rank != '' ? ('#' . $record->visiting_school_rank) : '';
-		$title_data['visiting_school'] = $record->visiting_school;
-		$title_data['visiting_school_name'] = $record->visiting_school_name;
-		$title_data['visiting_school_bline'] = (!empty($record->bline) && ($record->visiting_school_name == $record->bline[0]))
-			? $record->bline[1] : '';
-		$title_data['visiting_score'] = !empty($record->visiting_score) ? $record->visiting_score : '&ndash;';
-		$title_data['host_school_rank'] = $record->host_school_rank != '' ? ('#' . $record->host_school_rank) : '';
-		$title_data['host_school'] = $record->host_school;
-		$title_data['host_school_name'] = $record->host_school_name;
-		$title_data['host_school_bline'] = (!empty($record->bline) && ($record->host_school_name == $record->bline[0]))
-			? $record->bline[1] : '';
-		$title_data['host_score'] = !empty($record->host_score) ? $record->host_score : '&ndash;';
-		$title_data['vs_at_symbol'] = $record->vs_at_symbol;
-		$title_data['overtimes'] = ($record->overtimes != '' && !$record->overtimes > 0) ? $record->overtimes . 'OT' : '';
-		if ($record->completed == 'Y') {
-			if ($record->winning_school_name == $record->userpick_school_name) {
-				$title_data['label_class'] = 'label-success';
-				$title_data['pick_result'] = t('Correct');
-			} else {
-				$title_data['label_class'] = 'label-important';
-				$title_data['pick_result'] = t('Wrong');
-			}
-		}
-		$record->title_data = $title_data;		
-		
-		$pickIsOpen = user_access('administer site configuration') || 
-			($_SESSION['current_week']->week == $week && (time() < $pickCutoffTime));
-			
-		$record->pickIsOpen = $pickIsOpen;
-		
-		$gamerow_key = 'gid_' . $record->gid;
-		$form[$gamerow_key] = array(
-			'#type' => 'container',
-			'#title' => t($game_title),
-			'#attributes' => array('class' => array('pickem-entry', 'span6')),
-			'#tree' => TRUE,
-		);
-		$form[$gamerow_key]['game-title'] = array(
-			'#type' => 'markup',
-			'#markup' => theme('game_title', array('game' => $record, 'logobasepath' => '/' . drupal_get_path('module', 'pickem') . '/logos/ncaaf/')),
-		);
-		if ($clearrow) {
-			$form[$gamerow_key]['#attributes']['class'][] = 'clear-row';
-		}
-		$clearrow = !$clearrow;
-		
-		# process the pick school name (when available)
-		$form_state['picks'][$record->gid] = NULL;
-		if ($record->pkid) {
-			$ares = db_query('SELECT p.* FROM {pick} p WHERE pkid = :pkid', 
-				array(':pkid' => $record->pkid));
-				
-			$thepick = $ares->fetchObject();
-			if (!empty($thepick->pick_school_name)) {
-				$validPicks++;
-			}
-			$form_state['picks'][$record->gid] = $thepick;
-		} else {
-			$form_state['picks'][$record->gid] = NULL;
-		}
-		
-		$form[$gamerow_key]['pkid'] = array(
-			'#type' => 'hidden',
-			'#default_value' => $record->pkid ? $record->pkid : '',
-		);
-
-		$picksAreOpen = (time() < $pickCutoffTime) || user_access('administer site configuration');
-		$record->picksAreOpen = $picksAreOpen;
-		$pickOptions = array();
-		
-		### PICK SCHOOL NAME element ####
-		if ($pickemWeekIsLocked && !user_access('administer site configuration')) {
-			$pick_school_element_classes = array('label', 'pick-result');
-			if ($record->pick_is_correct == 'Y') {
-				$pick_school_element_classes[] = 'label-success';
-			} else if ($record->pick_is_correct == 'N') {
-				$pick_school_element_classes[] = 'label-important';
-			}
-			 
-			/**
-			$form[$gamerow_key]['pick_info'] = array(
-				'#type' => 'container',
-				'#attributes' => array(
-					'class' => $pick_school_element_classes,
-				),
-			);
-			$form[$gamerow_key]['pick_info']['pick_school_name'] = array(
-				'#type' => 'markup',
-				'#markup' => '<span><strong>' . $record->userpick_school . '</strong></span>',
-			);
-			*/
-		} else {
-			if ($pickIsOpen) {
-				$pickOptions[''] = t('-- Select School --');
-				$pickOptions[$record->visiting_school_name] = $record->visiting_school;
-				$pickOptions[$record->host_school_name] = $record->host_school;
-			} else {
-				$pickOptions[''] = t('-- Locked until week ' . $week . ' --');
-			}
-			$form[$gamerow_key]['pick_school_name'] = array(
-				'#type' => 'select',
-				'#options' => $pickOptions,
-				'#title_display' => 'invisible',
-				'#default_value' => $record->pkid ? $record->pick_school_name : '',
-				'#disabled' => ($_SESSION['current_week']->week != $week),
-			);
-		}
-	}
-	
-	#drupal_set_message('<strong>' . t('Deadline') . '</strong>' . t(' for picks is ') . strftime('<strong>%l:%M %p</strong> on  <strong>%a, %b %e, %Y</strong>', $pickCutoffTime), 'warning');
-	
-	if (($validPicks > 0) && ($validPicks < $totalGames)) {
-		// create an element that sites above the games
-		drupal_set_message(t('<strong>Warning!</strong> Please be reminded that you have not completed all of your picks'), 'warning');
-	}
-	$form['totalgames'] = array(
-		'#type' => 'hidden',
-		'#value' => $totalGames,
-	);
-	$form['actions'] = array(
-		'#type' => 'actions',
-		'#attributes' => array('class' => array('span12', 'clear-row')),
-	);
-	if (user_access('pickem player') && !$pickemWeekIsLocked) {
-		$form['actions']['submit'] = array(
-			'#type' => 'submit',
-			'#value' => t('Save Picks'),
-			'#attributes' => array(
-				'class' => array('btn')
-			),
-			'#disabled' => ($_SESSION['current_week']->week != $week),
-		);
-	} else {
-		if (!user_access('pickem player')) {
-			$form['actions']['register'] = array(
-				'#type' => 'markup',
-				'#markup' => t('<p><a href="/user/register"><strong>Please register</strong></a> in order to save these picks and participate in the World\'s Greatest ACC Pickem Competition.</p>'),
-			);
-		} else if ($pickemWeekIsLocked) {
-			$markup = '<p>' . t("This week's picks are now locked.  Good luck and score well.");
-			if ($user->name != 'ecuacc4ever') {
-				$markup .= '  ' . t('Just not as well as <strong><em>the champ</em></strong> (ecuacc4ever)');
-			}
-			$markup .= '</p>';
-			
-			$form['actions']['register'] = array(
-				'#type' => 'markup',
-				'#markup' => $markup,
-			);
-			
-		}
-	}
-	$form['line_updated'] = array(
-		'#type' => 'container',
-		'#attributes' => array('class' => array('span12', 'clear-row')),
-		'#weight' => 1000,
-	);
-	$form['line_updated']['message'] = array(
-		'#type' => 'markup',
-		'#markup' => t('<em>Betting lines last updated on: ' . variable_get('pickem.bettinglines_updated') . '</em>'),
-	);
-	$form['#attributes']['class'][] = 'clearfix';
-	return $form;
-}
-
+*/
 function pickem_school_page_title($conf = NULL) {
 	if ($conf != NULL) {
 		$result = db_query("SELECT displaytitle FROM {conference} WHERE name = :conf", array(':conf' => $conf));
@@ -684,10 +525,11 @@ function pickem_admin_access() {
 	global $user;
 
 	$arguments = func_get_args();
-	$account = array_shift($arguments);
+	//$account = array_shift($arguments);
 	if ($user->uid == 1) {
 		return TRUE;
 	}
+
 	foreach($arguments as $permission) {
 		if(user_access($permission)) {
 			return TRUE;
@@ -699,7 +541,7 @@ function pickem_admin_access() {
 /**
  * Fetch the slate of games for a pickem week
  */
-function pickem_fetch_slate($week = NULL, $player_uid = NULL) {
+function pickem_fetch_slate($week, $pickem_id, $player_uid = NULL) {
 	global $user;
 	
 	$target_uid = $user->uid;
@@ -715,6 +557,8 @@ function pickem_fetch_slate($week = NULL, $player_uid = NULL) {
 	$query->leftJoin('school', 'userpick', 'p.pick_school_name = userpick.name');
 	$query->leftJoin('sportspoll_tally', 't1', 'g.host_school_name = t1.school_name AND t1.rank <= 25 AND t1.week = ' . $week);
 	$query->leftJoin('sportspoll_tally', 't2', 'g.visiting_school_name = t2.school_name and t2.rank <= 25 AND t2.week = ' . $week);
+	$query->leftJoin('conference', 'hc', 'g.host_conf_name = hc.name');
+	$query->leftJoin('conference', 'vc', 'g.visiting_conf_name = vc.name');
 	
 	$query->fields('g');
 	$query->addField('p', 'pick_school_name', 'pick_school_name');
@@ -722,15 +566,20 @@ function pickem_fetch_slate($week = NULL, $player_uid = NULL) {
 	$query->addField('userpick', 'displaytitle', 'userpick_school');
 	$query->addField('userpick', 'name', 'userpick_school_name');
 	$query->addField('host', 'displaytitle', 'host_school');
+	$query->addField('host', 'sid', 'host_sid');
 	$query->addField('visiting', 'displaytitle', 'visiting_school');
+	$query->addField('visiting', 'sid', 'visiting_sid');
 	$query->addField('winning', 'displaytitle', 'winning_school');
+	$query->addField('hc', 'displaytitle', 'host_conf');
+	$query->addField('vc', 'displaytitle', 'visiting_conf');
 	$query->addField('t1', 'rank', 'host_school_rank');
 	$query->addField('t2', 'rank', 'visiting_school_rank');
 	$query->addField('p', 'pkid');
 	$query->orderBy('g.game_date');
 	
 	$query->condition('s.slate_id', $week);
-	$query->limit(30);
+	$query->condition('s.pid', $pickem_id);
+	$query->limit(50);
 	$result = $query->execute();
 	return $result;
 }
@@ -774,6 +623,135 @@ function pickem_fetch_games($week, $conf, $include_slate = TRUE) {
 	$result = $query->execute();
 	
 	return $result;
+}
+
+function pickem_slate_overview($week = NULL) {
+	if ($week == NULL) {
+		$week = $_SESSION['current_week']->week;
+	}
+	$season = variable_get('pickem.current_season', date('Y'));
+
+	$pick_data = pickem_load_pick_data($week, $season, array('ignore-player-stats'));
+
+	$slate = array();
+	foreach ($pick_data['game'] as $gid => $game) {
+		if ($game['week'] == $week) {
+			$slate[] = $game;
+		}
+	}
+	return array(
+		'#theme' => 'slate_overview',
+		'#slate' => $slate,
+	);
+}
+
+function theme_slate_overview($variables) {
+	$slate = $variables['slate'];
+
+	$out = '<h3>' . t('Welcome to the ACCbbs Pickem, hosted by SportSched.com') . '</h3>';
+	$out .= '<p>' . t('Week @week is underway, with @gamecount games in the slate.  This is the breakdown of picks, according to our experts:',
+		array(
+		'@week' => $_SESSION['current_week']->week,
+		'@gamecount' => count($slate))) . '</p>';
+	#$out .= '<ul>';
+	$out = '<table class="table table-striped">';
+
+	foreach ($slate as $game) {
+		$pct = 0;
+		$our_favorite = '';
+		$our_favorite_name = '';
+		$other = '';
+		if ($game[$game['host_school_name']]['count'] > $game[$game['visiting_school_name']]['count']) {
+			$pct = $game[$game['host_school_name']]['count'] / $game['num_picks'];
+			$our_favorite = $game['host_school'];
+			$our_favorite_name = $game['host_school_name'];
+			$other = $game['visiting_school'];
+		} else if ($game[$game['visiting_school_name']]['count'] > $game[$game['host_school_name']]['count']){
+			$pct = $game[$game['visiting_school_name']]['count'] / $game['num_picks'];
+			$our_favorite = $game['visiting_school'];
+			$our_favorite_name = $game['visiting_school_name'];
+			$other = $game['host_school'];
+		} else {
+			$pct = $game[$game['visiting_school_name']]['count'] / $game['num_picks'];
+			$our_favorite = array($game['visiting_school'], $game['host_school']);
+			$our_favorite_name = array($game['visiting_school_name'], $game['host_school_name']);
+			$other = $game['host_school'];
+		}
+		
+		$point_spread = array();
+		$point_spread_str = '';
+		if ($game['betting_line']) {
+			$point_spread = explode(':', $game['betting_line']);
+			$point_spread[1] = ($point_spread[0] == $game['host_school_name']) ? $point_spread[1] : '+' . abs($point_spread[1]);
+			$point_spread[] = ($point_spread[0] == $game['host_school_name']) ? $game['host_school'] : $game['visiting_school'];
+			$point_spread[0] = ($point_spread[0] == $game['host_school_name']) ? $point_spread[0] : $game['visiting_school_name'];
+			$point_spread_str = ' (' . $point_spread[1] . ')';
+		}
+
+		$row_class = '';
+		$round_pct = round($pct * 100);
+		if ($game['completed'] == 'Y') {
+			$row_class = 'success';
+		} else {
+			if (($round_pct >= 40) && ($round_pct <= 60)) {
+				$row_class = 'warning';
+			}
+		}
+		$pct = number_format($round_pct);
+		$out .= '<tr class="' . $row_class . '">';
+		$out .= '<td width="50%">';
+		
+		if ($game['completed'] == 'Y') {
+			$out .= t('<h3>@visiting_school - @visiting_score<br />@host_school - @host_score</h3>',
+				array('@visiting_school' => $game['visiting_school'], 
+							'@visiting_score' => $game['visiting_score'], 
+							'@host_school' => $game['host_school'], 
+							'@host_score' => $game['host_score']
+							)
+						);
+		} else {
+			$out .= t('<h3>@visiting_school<br />@vs_at @host_school@point_spread</h3>',
+				array(
+					'@visiting_school' => $game['visiting_school'], 
+					'@vs_at' => $game['vs_at'], 
+					'@host_school' => $game['host_school'], 
+					'@point_spread' => $point_spread_str,
+				)
+			)	. date('l, M j', $game['game_date']) . ' - ';
+			
+			//. '<h3>' . $game['visiting_school'] . '<br />' . $game['vs_at'] . ' ' . $game['host_school'] . $point_spread_str . '</h3>'
+	
+			if (date('g:i A', $game['game_date']) == '12:00 AM') {
+				$out .= 'TBA';
+			} else {
+				$out .= date('g:i A', $game['game_date']);
+			}
+		}
+
+		$out .= '</td>';
+		if (is_array($our_favorite)) {
+			$out .= '<td>'
+				. '<img class="img-polaroid" src="/sites/all/modules/pickem/logos/ncaaf/' . $our_favorite_name[0] . '.gif" width="80" />&nbsp;'
+				. '<img class="img-polaroid" src="/sites/all/modules/pickem/logos/ncaaf/' . $our_favorite_name[1] . '.gif" width="80" /><br /><br />'
+				. '<div style="font-size: 110%">Our Experts are evenly divided on both teams.</div>'
+				. '</td>';
+		} else {
+			$out .= '<td>'
+				. '<img class="img-polaroid" src="/sites/all/modules/pickem/logos/ncaaf/' . $our_favorite_name . '.gif" width="80" /><br /><br />'
+				. '<div style="font-size: 110%"><strong>' . $pct . '% of our experts</strong> favor <strong>' . $our_favorite . '</strong> over ' . $other . '</div>'
+				. '</td>';
+			
+		}
+		$out .= '</tr>';
+		
+		
+		#$out .= '<li><h3>' . $game['visiting_school'] . ' vs ' . $game['host_school'] . '</h3>';
+		#$out .= t('<strong>' . $pct . '% of our experts</strong> are picking <strong><em>@favorite</em></strong> over @other.', array('@favorite' => $our_favorite, '@other' => $other)) . '<br /></li>';
+	}
+	$out .= '</table>';
+	#$out .= '</ul>';
+
+	return $out;
 }
 
 function pickem_games_listing($form, &$form_state, $objtype = NULL, $objval = NULL) {
@@ -845,7 +823,7 @@ function pickem_games_listing($form, &$form_state, $objtype = NULL, $objval = NU
 			),
 			'classes' => $game_classes,
 		);
-		if (path_is_admin(current_path()) || user_access('administer pickem games')) {
+		if ($record->completed == 'N' && (path_is_admin(current_path()) || user_access('administer pickem games'))) {
 			$linktext = $record->slate_game_id ? 'Remove from Slate' : 'Add To Slate';
 			$linkpath = $record->slate_game_id ? 'remove' : 'add';
 			$row['data'][] = array(
@@ -869,6 +847,8 @@ function pickem_games_listing($form, &$form_state, $objtype = NULL, $objval = NU
 				)
 			) . '</div>';
 			*/
+		} else {
+			$row['data'][] = '&nbsp;';
 		}
 		$rows[] = $row;
 		#kpr($record);
@@ -986,7 +966,98 @@ function pickem_schedule_overview() {
 }
 
 function pickem_block_info($delta='') {
-	return array();
+	return array(
+		'leaderboard' => array(
+			'info' => 'Pickem Standings Leaderboard',
+			'cache' => DRUPAL_NO_CACHE,
+		)
+	);
+}
+
+/** 
+ * Implements hook_block_view
+ */
+function pickem_block_view($delta='') {
+	global $user;
+	if ($delta != 'leaderboard') {
+		return '';
+	}	
+	
+	$week = -1;
+	
+	$headers = array(
+		t(''),
+		t('Player'),
+		t('W'),
+		t('L'),
+		t('%'),
+		t('Picks'),
+	);
+	$rows = array();
+
+	$standings = pickem_load_standings(-1, 1, variable_get('pickem.current_season'));
+	$top_10 = array_slice($standings, 0, 10);
+	
+	$current_rank = 0;
+	$last_correct = NULL;
+	$rank_pos = 0;
+	
+	foreach ($top_10 as $player) {
+		$rank_pos++;
+		$current_correct = $player->correct;
+		
+		if ($player->correct != $last_correct) {
+			$current_rank = $rank_pos;
+			$last_correct = $player->correct;
+		}
+		
+		$pct = 0.0;
+		if ($player->correct + $player->incorrect) {
+			$pct = (float) $player->correct / ($player->correct + $player->incorrect);
+		}
+		$classes = array();
+		$thumb = '';
+		if (user_is_logged_in()) {
+			$player->data = user_load($player->uid);
+			//dpm($player->data);
+			if ($player->player_name == $user->name) {
+				$classes[] = 'info';
+			}
+		}
+		$player_name_cell = '<span title="' . $player->uid . '">' . $player->player_name . '</span>';
+		
+		#if ($player->weeks_won > 0 && ($week == -1)) {
+		#	$player_name_cell .= ' (' . $player->weeks_won . ')';
+		#}
+		#if ($week == -1) {
+		#	$player_name_cell = l($player_name_cell, 'user/'.$player->uid.'/pickemresults');
+		#}
+		//if ($week == $_SESSION['current_week']->week) {
+		//	$player_name_cell = l(t($player->player_name), 'pickem/slate/' . $player->uid);
+		//}
+		$rows[] = array(
+			'data' => array(
+				array('data' => $current_rank, 'class' => array('text-right')),
+				$player_name_cell,
+				array('data' => $player->correct, 'class' => array('text-right')),
+				array('data' => $player->incorrect, 'class' => array('text-right')),
+				array('data' => number_format($pct, 3), 'class' => array('text-right')),
+				#$data['num_picks'],
+				array('data' => isset($player->pick_count) ? $player->pick_count : '', 'class' => array('text-right')),
+			),
+			'class' => $classes,
+		);
+	}
+	$build = array(
+		'#theme' => 'table',
+		'#header' => $headers,
+		'#rows' => $rows,
+		'#attributes' => array('class' => array('table', 'table-condensed', 'standings')),
+	);
+	return array(
+		'subject' => t('Leaderboard'),
+		'content' => $build,
+	);
 }
 
 function pickem_user_delete($account) {
@@ -1001,4 +1072,237 @@ function pickem_user_register_action($object, $context) {
 	
 	#$role = user_role_load_by_name('pickem');
 	#user_multiple_role_edit(array($object->uid), 'add_role', $role->rid);
+}
+
+function pickem_ajax_load_slate_stats($uid = NULL) {
+	if ($uid == NULL || $uid == 1) {
+		$uid = 12;
+	}
+	$data = pickem_load_pick_data(-1, variable_get('pickem.current_season'), array('uid' => $uid));
+	$return = array_shift($data['player']);
+	return drupal_json_output(array('player' => $return));
+}
+
+function pickem_accproj_lookup($form, &$form_state) {
+	$form_state['game_keys'] = array();
+	
+	$query = db_select('game', 'g')
+		->fields('g', array('gid', 'visiting_school_name', 'host_school_name'))
+		->condition('completed', 'N');
+	$query->join('school', 'visiting', 'g.visiting_school_name = visiting.name');
+	$query->join('school', 'host', 'g.host_school_name = host.name');
+	$query->addField('host', 'displaytitle', 'host_school');
+	$query->addField('visiting', 'displaytitle', 'visiting_school');
+	$query->condition('gid', array(24, 40, 56, 72, 79, 80, 96, 104, 111));
+	$query->orderBy('game_date');
+	$result = $query->execute();
+	
+	$last_form_key = NULL;
+	$form['games_of_interest'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('Games of Interest'),
+		'#collapsible' => TRUE,
+		'#collapsed' => FALSE,
+		'#attributes' => array('class' => array('well')),
+	);
+	foreach ($result as $ikey => $game) {
+		$options = array();
+		$key = sprintf("%s over %s", $game->visiting_school_name, $game->host_school_name);
+		$options[$key] = t(sprintf("%s over %s", $game->visiting_school, $game->host_school));
+		$key = sprintf("%s over %s", $game->host_school_name, $game->visiting_school_name);
+		$options[$key] = t(sprintf("%s over %s", $game->host_school, $game->visiting_school));
+		
+		$form_key = sprintf("%s_%s", $game->visiting_school_name, $game->host_school_name);
+		$title = sprintf("%s at %s", $game->visiting_school, $game->host_school);
+		$form['games_of_interest'][$form_key] = array(
+			'#type' => 'select',
+			'#options' => $options,
+			'#title' => t($title),
+			'#default_value' => isset($form_state['values'][$form_key]) ? $form_state['values'][$form_key] : '',
+			'#empty_value' =>'',
+			'#empty_option' => t('-- Select Outcome --'),
+			//'#prefix' => '<div class="control-group' . (isset($form_state['values'][$form_key]) ? ' success' : '') . '">',
+			//'#suffix' => '</div>',
+		);
+
+		$form_state['game_keys'][] = $form_key;
+		$last_form_key = $form_key;
+	}
+
+	//$form['divider'] = array(
+	//	'#type' => 'markup',
+	//	'#markup' => '<hr class="clearfix" />',
+	//);
+	$options = array(
+		'duke' => t('Duke'),
+		'georgiatech' => t('Georgia Tech'),
+		'miami' => t('Miami'),
+		'vatech' => t('Virginia Tech')
+	);
+	
+	$form['winner'] = array(
+		'#type' => 'select',
+		'#options' => $options,
+		'#default_value' => isset($form_state['values']['winner']) ? $form_state['values']['winner'] : '',
+		'#empty_value' =>'',
+		'#empty_option' => t('-- Select Winner --'),
+		'#title' => t('Winner'),
+	);
+	$form['divider2'] = array(
+		'#type' => 'markup',
+		'#markup' => '<hr class="clearfix" />',
+	);
+	$form['search'] = array(
+		'#type' => 'submit',
+		'#value' => t('Search Results...'),
+		'#prefix' => '<div class="clearfix" style="margin-bottom: 1em;">',
+		'#suffix' => '</div>',
+	);
+	if (isset($form_state['results'])) {
+		// create a table
+		$header = array(
+			t('School'),
+			t('# Outcomes as Champion<br /><small>Out of :valid_outcomes outcomes</small>', array(':valid_outcomes' => $form_state['valid_outcomes'])),
+			t('Tiebreaker Methods'),
+		);
+		$rows = array();
+		if (!empty($form_state['results'])) {
+			foreach ($form_state['results'] as $school_name => $data) {
+				$row = array();
+				$row[] = array(
+					'data' => '<img src="/sites/all/modules/pickem/logos/ncaaf/' . $school_name . '.gif" width="50">',
+					'class' => array('text-center')
+				);
+				$row[] = $data['champ'];
+				$how = array();
+				foreach ($data['how'] as $hkey => $hdata) {
+					$hkey = join(', ', explode(',', $hkey));
+					//$how[] = l(sprintf("%s - %s", $hkey, $hdata), 'scene_details/' . $school_name . '/' . $hkey);
+					$how[] = sprintf("%s - %s", $hkey, $hdata);
+				}
+				$row[] = join('<br />', $how);
+				$rows[] = $row;
+			}
+		}
+		$form['outcomes'] = array(
+			'#theme' => 'table',
+			'#attributes' => array(
+				'class' => array('table', 'table-bordered', 'table-hover'),
+			),
+			'#header' => $header,
+			'#rows' => $rows,
+			'#empty' => t("Your selected winner has likely been eliminated from contention."),
+		);
+	}
+	return $form;
+}
+
+function projection_lookup_cmp($a, $b) {
+	if ($a['champ'] == $b['champ']) {
+		return $a['school_name'] < $b['school_name'] ? -1 : 1;
+	}
+	return $a['champ'] > $b['champ'] ? -1 : 1;
+}
+
+function pickem_accproj_lookup_submit($form, &$form_state) {
+	$outcomes = array();
+	foreach ($form_state['game_keys'] as $game_key) {
+		if ($form_state['values'][$game_key] != '') {
+			$outcomes[] = $form_state['values'][$game_key];
+		}
+	}
+
+	if (empty($outcomes)) {
+		return;
+	}
+
+	$sql = 'SELECT o.* FROM {outcome_scenario} o ';
+	if (!empty($outcomes)) {
+		$sql .= 'WHERE (';
+		foreach ($outcomes as $ndx => $outcome) {
+			$sql .= ($ndx == count($outcomes) - 1) 
+				? "scene_text LIKE '%" . $outcome . "%' "
+				: "scene_text LIKE '%" . $outcome . "%' AND ";
+		}
+		$sql .= ') ';
+	}
+	if (!empty($form_state['values']['winner'])) {
+		$sql .= "AND winner = '" . $form_state['values']['winner'] . "'";
+	}
+
+	$result = db_query($sql);
+	$form_state['results'] = array();
+	
+	$winners = array();
+	$count = 0;
+	foreach ($result as $row) {
+		$count++;
+		if (!isset($winners[$row->winner])) {
+			$winners[$row->winner] = array(
+				'school_name' => $row->winner,
+				'champ' => 0,
+				'how' => array()
+			);
+		}
+		$winners[$row->winner]['champ']++;
+		if (!isset($winners[$row->winner]['how'][$row->how])) {
+			$winners[$row->winner]['how'][$row->how] = 0;
+		}
+		$winners[$row->winner]['how'][$row->how]++;
+	}
+	uasort($winners, 'projection_lookup_cmp');
+	
+	$form_state['results'] = $winners;
+	$form_state['valid_outcomes'] = $count;
+	
+	$form_state['rebuild'] = TRUE;
+}
+
+function pickem_fetch_from_google() {
+	// anon callback func	
+	$filter = function($var) {
+		$r = preg_match('/listfeed/', $var['rel']);
+		return $r == 1;
+	};
+
+	// set timeout length
+	$context = stream_context_create(array( 
+	    'http' => array( 
+	        'timeout' => 5 
+	        ) 
+	    ) 
+	); 
+	$spreadsheet_key = '1M58ubV1mzlTaHWgs0YUIn_X3KRpx-M8zqAehG80lNVg';
+	$url = 'https://spreadsheets.google.com';
+	$queryParams = 'alt=json&amp;callback=displayContent';
+	
+	// set timeout fallback
+
+	// Pull in Master Google Spreadsheet as JSON
+	$worksheets_query_url = sprintf("%s/feeds/worksheets/%s/public/basic?%s", $url, $spreadsheet_key, $queryParams);
+	$list_query_url = sprintf("%s/feeds/list/%s/%s/public/values?%s", $url, $spreadsheet_key, 'od6', $queryParams);
+	$cells_query_url = sprintf("%s/feeds/cells/%s/%s/public/basic?%s", $url, $spreadsheet_key, 'od6', $queryParams);
+	
+	$worksheet_content = json_decode(file_get_contents($worksheets_query_url, 0, $context), TRUE);
+	dpm($worksheet_content);
+	
+	# interested in the entry elements to get the links for the tabs (acc, sec, ...)
+	$worksheetEntries = $worksheet_content['feed']['entry'];
+	
+	$listfeed_urls = array();
+	foreach ($worksheetEntries as $ws) {
+		$listfeed_urls = array_filter($ws['link'], $filter);
+		$list_query_url = str_replace('basic', 'values', sprintf("%s?%s", $listfeed_urls[0]['href'], $queryParams));
+		dpm($list_query_url);
+		$lists_content = json_decode(file_get_contents($list_query_url, 0, $context), TRUE);
+		if ($ws['title']['$t'] == 'acc') {
+			dpm($lists_content);
+			#foreach ($lists_content['feed']['entry'] as $g) {	// g => 'game'
+			#}
+		}
+	}
+	
+
+	return "Testing";
+	
 }

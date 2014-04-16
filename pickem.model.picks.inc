@@ -36,6 +36,7 @@ public class PickemManager {
 		$worksheetEntries = $worksheet_content['feed']['entry'];
 
 		$schedKey = $this::gs_scheduleForTitle('acc');
+		
 	}
 
 	public static function gs_scheduleForTitle($key) {

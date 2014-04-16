@@ -15,6 +15,7 @@ function pickem_install() {
 	global $pickem;
 	
 	variable_set('pickem.default_conference', 'acc');
+
 	variable_set('pickem.protected_schools', array('louisville','notredame'));
 	variable_set('pickem.current_season', 2013);
 	$season_start = array('month' => 8, 'day' => 31, 'year' => '2013');
@@ -33,6 +34,7 @@ function pickem_install() {
 	_pickem_install_weeks_data();
 	_pickem_load_conferences();
 	_pickem_load_schools();
+	
 	
 	foreach(array('acc','sec','big12','big10') as $conf) {
 			$filename = $conf.'games.tsv';

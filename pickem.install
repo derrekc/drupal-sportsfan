@@ -430,7 +430,7 @@ function pickem_schema() {
 		'game' => array(
 			'fields' => array(
 				'gid' => array('type' => 'serial','unsigned' => TRUE,'not null' => TRUE),
-				'title' => array('type' => 'title','length' => 255,),
+				'title' => array('type' => 'varchar','length' => 255,),
 				'game_date' => array('type' => 'int','not null' => FALSE,'default' => 0,),
 				'week' => array('type' => 'int','size' => 'tiny','unsigned' => TRUE,'not null' => TRUE,'default' => 0,),
 				'season' => array('type' => 'int','not null' => TRUE,'default' => 0,),

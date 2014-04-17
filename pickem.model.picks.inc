@@ -19,7 +19,7 @@ class PickemManager {
 			self::QUERY_STRING
 			);
 
-		$worksheet_content = json_decode(file_get_contents($feed_url, 0, $context), TRUE);
+		$worksheet_content = json_decode(file_get_contents($feed_url, 0, self::googleFeedURLContext()), TRUE);
 		$worksheetEntries = $worksheet_content['feed']['entry'];
 
 		$schedEntries = self::gs_scheduleForTitle($worksheetEntries, 'acc');
@@ -42,7 +42,7 @@ class PickemManager {
 			$lists_content = json_decode(file_get_contents($list_query_url, 0, self::googleFeedURLContext()), TRUE);
 			if ($ws['title']['$t'] == $key) {
 				dpm($lists_content);
-				return $list_content['feed']['entry'];
+				return $lists_content['feed']['entry'];
 			}
 		}	
 		return NULL;

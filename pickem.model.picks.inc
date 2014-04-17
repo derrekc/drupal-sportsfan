@@ -22,7 +22,7 @@ class PickemManager {
 		); 
 	
 		// get data from google in this testing period
-		$feed_url = sprintf($this::WORKSHEET_URL_PIECE, 
+		$feed_url = sprintf($self::WORKSHEET_URL_PIECE, 
 			$this::FEEDURL_PREFIX,
 			$this::GAMES_SPREADSHEET_KEY,
 			$this::QUERY_STRING

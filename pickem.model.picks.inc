@@ -31,7 +31,7 @@ class PickemManager {
 		$worksheet_content = json_decode(file_get_contents($feed_url, 0, $context), TRUE);
 		$worksheetEntries = $worksheet_content['feed']['entry'];
 
-		$schedKey = $this::gs_scheduleForTitle('acc');
+		$schedKey = gs_scheduleForTitle('acc');
 	}
 
 	public static function gs_scheduleForTitle($key) {

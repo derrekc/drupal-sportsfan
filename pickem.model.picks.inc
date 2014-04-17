@@ -2,13 +2,13 @@
 
 class PickemManager {
 
-	static $GAMES_SPREADSHEET_KEY = '1M58ubV1mzlTaHWgs0YUIn_X3KRpx-M8zqAehG80lNVg';
-	static $SCHOOLS_SPREADSHEET_KEY = '1mp_TDlGqvrYZssn_1mU6hLfoekvnWeH-LsYHMRfax6o';
-	static $WORKSHEET_URL_PIECE = '%s/feeds/worksheets/%s/public/basic%s';
-	static $LIST_URL_PIECE = '%s/feeds/list/%s/%s/public/values';
+	const GAMES_SPREADSHEET_KEY = '1M58ubV1mzlTaHWgs0YUIn_X3KRpx-M8zqAehG80lNVg';
+	const SCHOOLS_SPREADSHEET_KEY = '1mp_TDlGqvrYZssn_1mU6hLfoekvnWeH-LsYHMRfax6o';
+	const WORKSHEET_URL_PIECE = '%s/feeds/worksheets/%s/public/basic%s';
+	const LIST_URL_PIECE = '%s/feeds/list/%s/%s/public/values';
 
-	static $FEEDURL_PREFIX = 'https://spreadsheets.google.com';
-	static $QUERY_STRING = '?alt=json&amp;callback=displayContent';
+	const FEEDURL_PREFIX = 'https://spreadsheets.google.com';
+	const QUERY_STRING = '?alt=json&amp;callback=displayContent';
 	
 	public static function sampleData() {
 
@@ -22,16 +22,16 @@ class PickemManager {
 		); 
 	
 		// get data from google in this testing period
-		$feed_url = sprintf(PickemManager::WORKSHEET_URL_PIECE, 
-			PickemManager::FEEDURL_PREFIX,
-			PickemManager::GAMES_SPREADSHEET_KEY,
-			PickemManager::QUERY_STRING
+		$feed_url = sprintf(self::WORKSHEET_URL_PIECE, 
+			self::FEEDURL_PREFIX,
+			self::GAMES_SPREADSHEET_KEY,
+			self::QUERY_STRING
 			);
 
 		$worksheet_content = json_decode(file_get_contents($feed_url, 0, $context), TRUE);
 		$worksheetEntries = $worksheet_content['feed']['entry'];
 
-		$schedKey = PickemManager::gs_scheduleForTitle('acc');
+		$schedKey = self::gs_scheduleForTitle('acc');
 	}
 
 	public static function gs_scheduleForTitle($key) {

@@ -338,7 +338,7 @@ function pickem_schema() {
 				'sid' => array('type' => 'int','not null' => TRUE,'unsigned' => TRUE,),
 				'school_name' => array('type' => 'varchar','length' => 35,),
 				'season' => array('type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'not null' => TRUE,),
-				'sport' => array('type' => 'varchar','size' => 12,),
+				'sport' => array('type' => 'varchar','length' => 12,),
 				'wins' => array('type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'default' => 0,),
 				'losses' => array('type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'default' => 0,),
 				'ties' => array('type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'default' => 0,),

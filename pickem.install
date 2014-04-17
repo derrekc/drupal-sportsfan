@@ -21,66 +21,91 @@ function pickem_install() {
 	$season_start = array('month' => 8, 'day' => 31, 'year' => '2013');
 	variable_set('pickem.season_start', serialize($season_start));
 
+	$values = array(
+		array('pid' => NULL, 'title' => 'ACCbbs Football Pickem 2014', 'name' => 'accbbsfb2014', 
+					'sport' => 'ncaaf', 'season' => '2014', 'active' => 1, 
+					'autoconference' => 'acc', 'autoschool' => 'eastcarolina,westvirginia'),
+		array('pid' => NULL, 'title' => 'CSNbbs Football Pickem 2014', 'name' => 'csnbbsfb2014',
+					'sport' => 'ncaaf', 'season' => '2014', 'active' => 0,
+					'autoconference' => '', 'autoschool' => ''),
+		);
+		
+	$query = db_insert('pickem')->fields(array(
+		'pid', 'title', 'name', 'sport', 'season', 'active', 'autoconference', 'autoschool'
+	));
+	foreach ($values as $rec) {
+		$query->values($rec);
+	}
+	$result = $query->execute();
+	
 	# temporarily store the schools as they are added to the database
 	# as we'll need to access data when adding games
 	$tmp_school = array();
 	
+	#_pickem_install_weeks_data();
+	_pickem_load_conferences();
+	_pickem_load_schools();
+	_pickem_install_initial_games();
+	/*
 	$pickem = new stdClass();
 	$pickem->title = "ACCbbs Pickem 2013";
 	$pickem->season = '2013';
 	drupal_write_record('pickem', $pickem);
 	print_r($pickem);
 	
-	_pickem_install_weeks_data();
-	_pickem_load_conferences();
-	_pickem_load_schools();
-	
 	foreach(array('acc','sec','big12','big10') as $conf) {
 		$filename = $conf.'games.tsv';
 		_pickem_install_initial_games($filename);
 	}
+	*/
 }
 
 function _pickem_load_schools() {
 	global $tmp_school;
-	$file = drupal_get_path('module', 'pickem') . '/data/schools.tsv';
-	if (($handle = fopen($file, 'r')) !== FALSE) {
-		while (($data = fgetcsv($handle, 90, "\t"))) {
-			$r = db_query('SELECT s.name FROM {school} s WHERE name = :name', array(':name' => $data[2]));
-			if (!$r->fetchObject()) {
-				$o = new stdClass();
-				$o->title = $data[0];
-				$o->displaytitle = $data[1];
-				$o->name = $data[2];
-				$o->nickname = $data[3];
-				$o->conf_name = $data[4];
-				$o->conf_division = $data[5];
-				if (isset($data[6])) {
-					$o->sportsbook_name = $data[6];
-				} else {
-					$o->sportsbook_name = preg_replace('/\s+/', '', $data[0]);
-				}
-				drupal_write_record('school', $o);
-				$tmp_school[$o->name] = $o;
-			}
+	#$file = drupal_get_path('module', 'pickem') . '/data/schools.tsv';
+	$schools = GoogleSpreadsheetManager::fetchSchoolsSpreadsheetEntries();
+	foreach ($schools as $s) {
+		$o = new stdClass();
+		$o->title = $s['gsx$title']['$t'];
+		$o->displaytitle = $s['gsx$displaytitle']['$t'];
+		$o->name = $s['gsx$name']['$t'];
+		$o->nickname = $s['gsx$nickname']['$t'];
+		$o->conf_name = $s['gsx$confname']['$t'];
+		$o->conf_division = $s['gsx$confdivision']['$t'];
+		if (!empty($s['gsx$sportsbookname']['$t'])) {
+			$o->sportsbook_name = $s['gsx$sportsbookname']['$t'];
+		} else {
+			$o->sportsbook_name = preg_replace('/\s+/', '', $o->title);
+		}
+		if ($s['gsx$title_ineligible'] == 'TRUE') {
+			$o->title_ineligible = 1;
+		}
+		else {
+			$o->title_ineligible = 0;
+		}
+		if (drupal_write_record('school', $o) !== FALSE) {
+			drush_print(sprintf('added %s (%s) to the School table', $o->title, $o->name));
+			$tmp_school[$o->name] = $o;
 		}
 	}
-	fclose($handle);
 }
 
 function _pickem_load_conferences() {
-	global $tmp_school;
-	$file = drupal_get_path('module', 'pickem') . '/data/conference.tsv';
-	if (($handle = fopen($file, 'r')) !== FALSE) {
-		while (($data = fgetcsv($handle, 90, "\t"))) {
-			$o = new stdClass();
-			$o->name = $data[0];
-			$o->title = $data[1];
-			$o->displaytitle = $data[2];
-			drupal_write_record('conference', $o);
+
+	#$file = drupal_get_path('module', 'pickem') . '/data/conference.tsv';
+	#$file = 'https://docs.google.com/spreadsheets/d/1zwJv7FCywucb2KidUzHtaXMfxzxtgpz15nT4xtssrQE/export?gid\u003d0\u0026format\u003dcsv';
+	#$content = file_get_contents($file, 0, GoogleSpreadsheetManager::googleFeedURLContext());
+	
+	$conferences = GoogleSpreadsheetManager::fetchConferenceSpreadsheetEntries();
+	foreach ($conferences as $conf) {
+		$o = new stdClass();
+		$o->name = $conf['gsx$name']['$t'];
+		$o->title = $conf['gsx$title']['$t'];
+		$o->displaytitle = $conf['gsx$displaytitle']['$t'];
+		if(drupal_write_record('conference', $o) !== FALSE) {
+			drush_print(sprintf("added %s (%s) to the database...", $o->title, $o->name));
 		}
 	}
-	fclose($handle);
 }
 
 function _pickem_install_weeks_data() {
@@ -138,10 +163,74 @@ function _pickem_update_weeks_data() {
 	}
 }
 
-function _pickem_install_initial_games($fname) {
+function _pickem_install_initial_games() {
 	global $tmp_school;
 	global $pickem;
 	
+	$dbres = db_select('pickem', 'p')
+		->fields('p')
+		->condition('p.active', 1)
+		->execute();
+	$pickems = $dbres->fetchAll();
+	
+	$gameEntries = GoogleSpreadsheetManager::fetchGamesSpreadsheetEntries();
+	foreach ($gameEntries as $conf => $confList) {
+		foreach ($confList as $g) {
+			$o = new stdClass();
+			$o->season = $g['gsx$season']['$t'];
+			$date = new DateTime($g['gsx$date']['$t']);
+			$o->game_date = $date->getTimestamp();
+			$o->week = $g['gsx$week']['$t'];
+			$o->visiting_school_name = $g['gsx$visitor']['$t'];
+			$o->host_school_name = $g['gsx$host']['$t'];
+			$o->sport = $g['gsx$sport']['$t'];
+			$o->tv = $g['gsx$tv']['$t'];
+			$o->neutral = $g['gsx$neutral']['$t'] == 'TRUE' ? 'Y' : 'N';
+			$o->location = $g['gsx$location']['$t'];
+			if (drupal_write_record('game', $o) !== FALSE) {
+				drush_print(sprintf('added "%s vs %s" to Game table...', $o->visiting_school_name, $o->host_school_name));
+				
+				foreach ($pickems as $p) {
+					$addToSlate = FALSE;
+					$patt = sprintf('/%s/', $conf);
+					if (preg_match($patt, $p->autoconference) == 1) {
+						// add game to slate
+						drush_print('***** Need to add game to slate (A) *****');
+						$addToSlate = TRUE;
+					}
+					else {
+						$patt_a = sprintf('/%s/', $tmp_school[$o->visiting_school_name]->conf_name);
+						$patt_b = sprintf('/%s/', $tmp_school[$o->host_school_name]->conf_name);
+						if ((preg_match($patt_a, $p->autoconference) == 1) || (preg_match($patt_b, $p->autoconference) == 1)) {
+							// add game to slate
+							drush_print('***** Need to add game to slate (B) *****');
+							$addToSlate = TRUE;
+						}
+						else {
+							$patt_a = sprintf('/%s/', $tmp_school[$o->visiting_school_name]->name);
+							$patt_b = sprintf('/%s/', $tmp_school[$o->host_school_name]->name);
+							if ((preg_match($patt_a, $p->autoschool) == 1) || (preg_match($patt_b, $p->autoschool) == 1)) {
+								// add game to slate
+								drush_print('***** Need to add game to slate (C) *****');
+								$addToSlate = TRUE;
+							}
+						}
+					}
+					if ($addToSlate) {	
+						$s = new stdClass();
+						$s->week = $o->week;
+						$s->gid = $o->gid;
+						$s->season = $o->season;
+						$s->pid = $p->pid;
+						drupal_write_record('slate', $s);
+					}
+				}
+			}
+
+		}
+	}
+
+	/*
 	$file = drupal_get_path('module', 'pickem') . '/data/' . $fname;
 	if (($handle = fopen($file, 'r')) !== FALSE) {
 		while (($data = fgetcsv($handle, 90, "\t"))) {
@@ -190,7 +279,9 @@ function _pickem_install_initial_games($fname) {
 		}
 	}
 	fclose($handle);
+	*/
 }
+
 /**
  * Implements hook_schema
  * @return array
@@ -210,6 +301,7 @@ function pickem_schema() {
 				'conf_name' => array('type' => 'varchar','length' => '15','not null' => TRUE,),
 				'conf_division' => array('type' => 'varchar','length' => 25,),
 				'active' => array('type' => 'int','size' => 'tiny','not null' => TRUE,'default' => 1,),
+				'title_ineligible' => array('type' => 'int', 'size' => 'tiny', 'default' => 0,),
 			),
 			'indexes' => array(
 				'machine_name' => array(array('name', 5)),
@@ -248,29 +340,15 @@ function pickem_schema() {
 		),
 		'pickem' => array(
 			'fields' => array(
-				'pid' => array(
-					'type' => 'serial',
-					'unsigned' => TRUE,
-					'not null' => TRUE,
-				),
-				'title' => array(
-					'type' => 'varchar',
-					'length' => 128,
-					'not null' => TRUE,
-					'default' => '',
-				),
-				'name' => array(
-					'type' => 'varchar',
-					'length' => 35,
-					'not null' => TRUE,
-					'default' => '',
-				),
-				'season' => array(
-					'type' => 'int',
-					'unsigned' => TRUE,
-					'not null' => TRUE,
-					'default' => 0,
-				),
+				'pid' => array('type' => 'serial','unsigned' => TRUE,'not null' => TRUE,),
+				'title' => array('type' => 'varchar','length' => 128,'not null' => TRUE,'default' => '',),
+				'name' => array('type' => 'varchar','length' => 60,'not null' => TRUE,'default' => '',),
+				'season' => array('type' => 'int','unsigned' => TRUE,'not null' => TRUE,'default' => 0,),
+				'sport' => array('type' => 'varchar','length' => 12,'not null'=>TRUE,'default' =>''),
+				'active' => array('type' => 'int','size' => 'tiny','not null' => TRUE,'default' => 1,),
+				'autoconference' => array('type' =>'varchar', 'length' => 128,),
+				'autoschool' => array('type' => 'varchar', 'length' => 128),
+				'join_deadline' => array('type' => 'int', 'default' => 0),
 			),
 			'primary key' => array('pid'),
 		),
@@ -336,9 +414,9 @@ function pickem_schema() {
 		'school_records' => array(
 			'fields' => array(
 				'sid' => array('type' => 'int','not null' => TRUE,'unsigned' => TRUE,),
-				'school_name' => array('type' => 'varchar','length' => 35,),
+				'school_name' => array('type' => 'varchar','length' => 35, 'not null' => TRUE, 'default' => ''),
 				'season' => array('type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'not null' => TRUE,),
-				'sport' => array('type' => 'varchar','length' => 12,),
+				'sport' => array('type' => 'varchar','length' => 12,'not null'=>TRUE,'default' =>''),
 				'wins' => array('type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'default' => 0,),
 				'losses' => array('type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'default' => 0,),
 				'ties' => array('type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'default' => 0,),
@@ -354,9 +432,9 @@ function pickem_schema() {
 		'school_points' => array(
 			'fields' => array(
 				'sid' => array('type' => 'int','not null' => TRUE,'unsigned' => TRUE,),
-				'school_name' => array('type' => 'varchar','length' => 35,'not null' => TRUE,),
+				'school_name' => array('type' => 'varchar','length' => 35,'not null' => TRUE,'default' => ''),
 				'season' => array('type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'not null' => TRUE,),
-				'sport' => array('type' => 'varchar','length' => 12,'not null' => TRUE,),
+				'sport' => array('type' => 'varchar','length' => 12,'not null' => TRUE,'default' => ''),
 				'pf' => array('type' => 'int', 'size' => 'medium', 'unsigned' => TRUE, 'default' => 0,),
 				'pa' => array('type' => 'int', 'size' => 'medium', 'unsigned' => TRUE, 'default' => 0,),
 				'gp' => array('type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'default' => 0,),
@@ -443,11 +521,12 @@ function pickem_schema() {
 				'visiting_conf_name' => array('type' => 'varchar','length' => 15,),
 				'neutral' => array('type' => 'varchar','length' => 1,'not null' => TRUE,'default' => 'N',),
 				'location' => array('type' => 'varchar','length' => 128,),
-				'sport' => array('type' => 'varchar','length' => 12,'not null' => TRUE,),
+				'sport' => array('type' => 'varchar','length' => 12,'not null' => TRUE, 'default' => '',),
 				'betting_line' => array('type' => 'varchar','length' => '50',),
-				'completed' => array('type' => 'varchar','length' => 1,'not null' => TRUE,),
+				'completed' => array('type' => 'varchar','length' => 1,'not null' => TRUE, 'default' => 'N'),
 				'overtimes' => array('type' => 'int','unsigned' => TRUE,'size' => 'tiny',),
 				'stats_processed' => array('type' => 'int', 'default' => 0,),
+				'tv' => array('type' => 'varchar', 'length' => 20,),
 			),
 			'indexes' => array(
 				'host_school' => array(array('host_school_name', 5)),

@@ -58,6 +58,18 @@ function pickem_theme($existing, $type, $theme, $path) {
 		'slate_overview' => array(
 			'variables' => array('slate' => NULL),
 		),
+		'pickem-overview' => array(
+			'variables' => array(
+				'standingsTopTen' => NULL,
+				'upcomingGames' => NULL,
+				'pickemPlayer' => NULL,
+			),
+			'template' => 'pickem-overview',
+		),
+		'pickem_pickem_player_form' => array(
+			'render element' => 'form',
+			'file' => 'pickem.form.inc',
+		),
 		'slate_compare' => array(
 			'variables' => array('slate' => NULL, 'slate_compare' => NULL, 'games' => NULL, 'player_name' => NULL, 'compare_player' => NULL, 'week' => NULL),
 		)
@@ -107,18 +119,73 @@ function pickem_menu() {
 			'title' => 'Current Picks',
 			'page callback' => 'pickem_picks',
 			'access callback' => TRUE,
-			)
-		);
+		),
+		'playerform' => array(
+			'title' => 'Player Form',
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('pickem_pickem_player_form'),
+			'file' => 'pickem.form.inc',
+			'access callback' => TRUE,
+			'title' => 'Player Form',
+		),
+	);
+	
+	$items = array_merge($items, _pickem_pickem_paths($items));
+	
 	return $items;
 }
 
+function _pickem_pickem_paths() {
+	$items = array();
+	
+	$dbResult = db_select('pickem','p')
+		->fields('p')
+		->condition('active', 1)
+		->execute();
+		
+	foreach ($dbResult as $row) {
+		$overviewkey = sprintf('pickem/%s', $row->name);
+		$standingskey = sprintf('pickem/%s/standings', $row->name);
+		$slatekey = sprintf('pickem/%s/slate', $row->name);
+		$items[$overviewkey] = array(
+			'page callback' => 'pickem_pickem_overview',
+			'page arguments' => array($row->pid),
+			'file' => 'pickem.pages.inc',
+			'access callback' => 'pickem_player_access',
+			'access arguments' => array($row->pid),
+			'title' => $row->title,
+		);
+		$items[$standingskey] = array(
+			'page callback' => 'pickem_pickem_standings',
+			'page arguments' => array($row->pid),
+			'file' => 'pickem.pages.inc',
+			'access callback' => 'pickem_player_access',
+			'access arguments' => array($row->pid),
+			'title' => 'standings',
+		);
+	}
+	return $items;
+}
 
-function pickem_player_access() {
+function pickem_player_access($pid = NULL) {
 	global $user;
 	if ($user->uid == 1) {
 		return TRUE;
-	}	
-	return user_access('pickem player') || user_access('administer pickem settings');
+	}
+	if ($pid == NULL) {
+		return FALSE;
+	}
+	if (user_access('administer pickem settings')) {
+		return TRUE;
+	}
+	$res = db_select('pickem_player', 'pp')
+		->fields('pp')
+		->condition('pp.pickem_id', $pid)
+		->condition('pp.uid', $user->uid)
+		->execute();
+	$player = $res->fetchObject();
+	
+	return user_access('pickem player') && !is_null($player);
 }
 
 function pickem_admin_access() {
@@ -139,8 +206,10 @@ function pickem_admin_access() {
 }
 
 function pickem_picks($week = NULL) {
-	require_once(drupal_get_path('module', 'pickem') . '/pickem.model.picks.inc');
-	$sampleData = PickemManager::sampleData();
+	//require_once(drupal_get_path('module', 'pickem') . '/pickem.model.picks.inc');
+	$sampleData = GoogleSpreadsheetManager::sampleData();
+	$schoolData = GoogleSpreadsheetManager::fetchSchoolsSpreadsheetEntries();
+	dpm($schoolData);
 
 	$page['header'] = array(
 		'#type' => 'markup',

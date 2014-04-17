@@ -37,11 +37,8 @@ class PickemManager {
 			$listfeed_urls = array_filter($ws['link'], $filter);
 			$list_query_url = str_replace('basic', 'values', sprintf("%s%s", $listfeed_urls[0]['href'], self::QUERY_STRING));
 
-			dpm($list_query_url);
-
 			$lists_content = json_decode(file_get_contents($list_query_url, 0, self::googleFeedURLContext()), TRUE);
 			if ($ws['title']['$t'] == $key) {
-				dpm($lists_content);
 				return $lists_content['feed']['entry'];
 			}
 		}	

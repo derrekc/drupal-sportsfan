@@ -31,17 +31,17 @@ class PickemManager {
 		$worksheet_content = json_decode(file_get_contents($feed_url, 0, $context), TRUE);
 		$worksheetEntries = $worksheet_content['feed']['entry'];
 
-		$schedKey = self::gs_scheduleForTitle('acc');
+		$schedKey = self::gs_scheduleForTitle($worksheetEntries, 'acc');
 	}
 
-	public static function gs_scheduleForTitle($key) {
+	public static function gs_scheduleForTitle($entries, $key) {
 		$filter = function($var) {
 			$r = preg_match('/listfeed/', $var['rel']);
 			return $r == 1;
 		};
 
 		$listfeed_urls = array();
-		foreach ($worksheetEntries as $ws) {
+		foreach ($entries as $ws) {
 			$listfeed_urls = array_filter($ws['link'], $filter);
 			$list_query_url = str_replace('basic', 'values', sprintf("%s?%s", $listfeed_urls[0]['href'], $queryParams));
 

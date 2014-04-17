@@ -10,6 +10,7 @@ require_once(drupal_get_path('module', 'pickem') . '/pickem.model.inc');
 
 function pickem_init() {
 	$now = time();
+	/*
 	$query = db_select('week', 'w')
 		->fields('w')
 		->condition('end', $now, '>')
@@ -26,6 +27,7 @@ function pickem_init() {
 			variable_set('pickem.current_week', $current_week->week);
 		}
 	}
+	*/
 }
 
 function pickem_theme($existing, $type, $theme, $path) {

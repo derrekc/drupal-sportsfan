@@ -43,7 +43,7 @@ class PickemManager {
 		$listfeed_urls = array();
 		foreach ($entries as $ws) {
 			$listfeed_urls = array_filter($ws['link'], $filter);
-			$list_query_url = str_replace('basic', 'values', sprintf("%s?%s", $listfeed_urls[0]['href'], self::QUERY_STRING));
+			$list_query_url = str_replace('basic', 'values', sprintf("%s%s", $listfeed_urls[0]['href'], self::QUERY_STRING));
 
 			dpm($list_query_url);
 

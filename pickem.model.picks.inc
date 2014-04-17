@@ -22,16 +22,16 @@ class PickemManager {
 		); 
 	
 		// get data from google in this testing period
-		$feed_url = sprintf(WORKSHEET_URL_PIECE, 
-			FEEDURL_PREFIX,
-			GAMES_SPREADSHEET_KEY,
-			QUERY_STRING
+		$feed_url = sprintf(PickemManager::WORKSHEET_URL_PIECE, 
+			PickemManager::FEEDURL_PREFIX,
+			PickemManager::GAMES_SPREADSHEET_KEY,
+			PickemManager::QUERY_STRING
 			);
 
 		$worksheet_content = json_decode(file_get_contents($feed_url, 0, $context), TRUE);
 		$worksheetEntries = $worksheet_content['feed']['entry'];
 
-		$schedKey = gs_scheduleForTitle('acc');
+		$schedKey = PickemManager::gs_scheduleForTitle('acc');
 	}
 
 	public static function gs_scheduleForTitle($key) {

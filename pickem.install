@@ -442,7 +442,7 @@ function pickem_schema() {
 				'host_conf_name' => array('type' => 'varchar','length' => 15,),
 				'visiting_conf_name' => array('type' => 'varchar','length' => 15,),
 				'neutral' => array('type' => 'varchar','length' => 1,'not null' => TRUE,'default' => 'N',),
-				'location' => array('type' => 'varchar','size' => 128,),
+				'location' => array('type' => 'varchar','length' => 128,),
 				'sport' => array('type' => 'varchar','length' => 12,'not null' => TRUE,),
 				'betting_line' => array('type' => 'varchar','length' => '50',),
 				'completed' => array('type' => 'varchar','length' => 1,'not null' => TRUE,),

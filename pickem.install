@@ -316,7 +316,7 @@ function pickem_schema() {
 				'uid' => array('type' => 'int','unsigned' => TRUE,'not null' => TRUE,),
 				'gid' => array('type' => 'int','unsigned' => TRUE,'not null' => TRUE,),
 				'pick_school_name' => array('type' => 'varchar','length' => 35,'default' => NULL,),
-				'correct' => array('type' => 'char','size' => 1,'default' => NULL,),
+				'correct' => array('type' => 'varchar','length' => 1,'default' => NULL,),
 				'week' => array('type' => 'int','size' => 'tiny','unsigned' => TRUE,'not null' => TRUE,'default' => 0,),
 				'season' => array('type' => 'int','unsigned' => TRUE,'not null' => TRUE,'default' => 0,),
 				'pickem_id' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0,),

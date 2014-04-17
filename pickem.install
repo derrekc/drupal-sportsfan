@@ -650,7 +650,7 @@ function pickem_schema() {
 				),
 				'pct' => array(
 					'type' => 'float',
-					'precision' => 1,
+					'precision' => 4,
 					'scale' => 3,
 				),
 				'pickem_id' => array(

@@ -11,15 +11,6 @@ class PickemManager {
 	const QUERY_STRING = '?alt=json&amp;callback=displayContent';
 	
 	public static function sampleData() {
-
-		// set timeout length
-		$context = stream_context_create(
-			array( 
-		    'http' => array( 
-					'timeout' => 5 
-				) 
-			) 
-		); 
 	
 		// get data from google in this testing period
 		$feed_url = sprintf(self::WORKSHEET_URL_PIECE, 
@@ -31,7 +22,8 @@ class PickemManager {
 		$worksheet_content = json_decode(file_get_contents($feed_url, 0, $context), TRUE);
 		$worksheetEntries = $worksheet_content['feed']['entry'];
 
-		$schedKey = self::gs_scheduleForTitle($worksheetEntries, 'acc');
+		$schedEntries = self::gs_scheduleForTitle($worksheetEntries, 'acc');
+		return $schedEntries;
 	}
 
 	public static function gs_scheduleForTitle($entries, $key) {
@@ -50,8 +42,10 @@ class PickemManager {
 			$lists_content = json_decode(file_get_contents($list_query_url, 0, self::googleFeedURLContext()), TRUE);
 			if ($ws['title']['$t'] == $key) {
 				dpm($lists_content);
+				return $list_content['feed']['entry'];
 			}
-		}		
+		}	
+		return NULL;
 	}
 
 	public static function googleFeedURLContext() {

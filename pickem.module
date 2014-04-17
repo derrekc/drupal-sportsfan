@@ -137,7 +137,15 @@ function pickem_picks($week = NULL) {
 	$sampleData = PickemManager::sampleData();
 	dpm($sampleData);
 
-	return '';
+	$page['header'] = array(
+		'#type' => 'markup',
+		'#markup' => '<h1>Pickem Picks</h1>',
+		);
+	return $page;
+}
+
+function theme_pickem_picks($variables) {
+	kpr($variables);
 }
 
 function pickem_slate_overview($week = NULL) {

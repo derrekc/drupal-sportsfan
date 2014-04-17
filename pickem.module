@@ -31,7 +31,7 @@ function pickem_init() {
 function pickem_theme($existing, $type, $theme, $path) {
 	return array(
 		'pickem_picks' => array(
-			'render element' => 'page',
+			'variables' => array('entries' => NULL),
 		),
 		'game_title' => array(
 			'variables' => array('game' => NULL, 'logobasepath' => NULL, 'other_player' => NULL),
@@ -144,7 +144,10 @@ function pickem_picks($week = NULL) {
 		'#type' => 'markup',
 		'#markup' => '<h1>Pickem Picks</h1>',
 		);
-	$page['#theme'] = 'pickem_picks';
+	$page['entries'] = array(
+		'#theme' => 'pickem_picks',
+		'#entries' => $sampleData,
+		);
 	return $page;
 }
 

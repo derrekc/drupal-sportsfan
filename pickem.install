@@ -552,7 +552,7 @@ function pickem_schema() {
 					'type' => 'int',
 					'unsigned' => TRUE,
 					'not null' => TRUE,
-					'default' => 'CURRENT_TIMESTAMP'
+					'default' => 0,
 				)
 			),
 			'primary key' => array('pvid'),

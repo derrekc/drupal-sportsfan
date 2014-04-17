@@ -22,10 +22,10 @@ class PickemManager {
 		); 
 	
 		// get data from google in this testing period
-		$feed_url = sprintf($self::WORKSHEET_URL_PIECE, 
-			$this::FEEDURL_PREFIX,
-			$this::GAMES_SPREADSHEET_KEY,
-			$this::QUERY_STRING
+		$feed_url = sprintf(WORKSHEET_URL_PIECE, 
+			FEEDURL_PREFIX,
+			GAMES_SPREADSHEET_KEY,
+			QUERY_STRING
 			);
 
 		$worksheet_content = json_decode(file_get_contents($feed_url, 0, $context), TRUE);

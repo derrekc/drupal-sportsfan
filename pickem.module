@@ -148,7 +148,7 @@ function pickem_picks($week = NULL) {
 }
 
 function theme_pickem_picks($variables) {
-	kpr($variables);
+	dpm('in the theme function');
 }
 
 function pickem_slate_overview($week = NULL) {

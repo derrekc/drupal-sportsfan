@@ -144,6 +144,7 @@ function pickem_picks($week = NULL) {
 		'#type' => 'markup',
 		'#markup' => '<h1>Pickem Picks</h1>',
 		);
+	$page['#theme'] = 'pickem_picks';
 	return $page;
 }
 

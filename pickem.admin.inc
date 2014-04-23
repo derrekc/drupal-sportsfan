@@ -1,5 +1,163 @@
 <?php
 
+/**
+ * Display a list of pickem records to manage
+ */
+function pickem_admin_pickems() {
+	$header = array(
+		array('data' => t('Title')),
+		array('data' => t('Machine Name')),
+		array('data' => t('Season')),
+		array('data' => t('Active')),
+		array('data' => t('Action')),
+	);
+	
+	$query = db_select('pickem', 'p')->extend('PagerDefault');
+	$query->fields('p');
+	$result = $query->limit(10)->orderBy('p.title')->execute();
+	
+	$rows = array();
+	foreach ($result as $row) {
+		$rows[] = array(
+			array('data' => t($row->title)),
+			array('data' => t($row->name)),
+			array('data' => t($row->season)),
+			array('data' => t($row->active)),
+			array('data' => t($row->title)),
+		);
+	}
+	
+	$build['pager_table'] = array(
+		'#theme' => 'table',
+		'#header' => $header,
+		'#rows' => $rows,
+		'#empty' => t('There are no Pickem records found in the database'),
+	);
+	$build['pager_pager'] = array('#theme' => 'pager');
+	return $build;
+}
+
+/**
+ * Administrative form - Pickem Data
+ */
+function pickem_admin_pickem_form($form, &$form_state, $pname) {
+	$pickem = NULL;
+	if ($pname == 'new') {
+		$pickem = variable_get('pickem.newpickem', PickemManager::newPickem());
+	}
+	else {
+		$pickem = PickemManager::loadPickem($pname);
+	}
+	
+	$form['title'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Pick\'Em Title'),
+		'#description' => t('The name of the Pick\'em Contest.'),
+		'#default_value' => $pickem->title,
+		'#required' => TRUE,
+	);
+	if (empty($pickem->pid)) {
+		$form['name'] = array(
+			'#type' => 'machine_name',
+			'#default_value' => $pickem->name,
+		);			
+	}
+	$form['sport'] = array(
+		'#type' => 'select',
+		'#title' => t('Sport'),
+		'#options' => PickemManager::sportOptions(),
+		'#default_value' => $pickem->sport,
+	);
+	$form['season'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Season'),
+		'#size' => '4',
+		'#required' => TRUE,
+		'#default_value' => $pickem->season,
+	);
+	$form['active'] = array(
+		'#type' => 'checkbox',
+		'#title' => t('Active'),
+		'#description' => t('Mark this Pick\'em contest as active.'),
+		'#default_value' => $pickem->active,
+	);
+  $form['description'] = array(
+    '#type' => 'text_format',
+    '#title' => t('Description'),
+    '#default_value' => $pickem->description,
+    '#format' => $pickem->desc_format,
+  );
+	$form['startdate'] = array(
+		'#type' => 'date_popup',
+  	'#date_format' => 'Y-m-d',
+  	'#date_type' => DATE_UNIX,
+  	'#date_timezone' => date_default_timezone(),
+		'#title' => t('Start Date'),
+		'#default_value' => date('Y-m-d', $pickem->startdate),
+	);
+	dpm($pickem);
+	dpm(date('m/d/Y', $pickem->startdate));
+	$form['weeks'] = array(
+		'#type' => 'textfield',
+		'#size' => '4',
+		'#default_value' => $pickem->weeks,
+		'#title' => t('Number of Weeks'),
+	);
+	$form['joindeadline'] = array(
+		'#type' => 'date_popup',
+  	'#date_format' => 'm/d/Y - H:i',
+  	'#date_type' => DATE_UNIX,
+  	'#date_timezone' => date_default_timezone(),
+		'#title' => t('Join Deadline'),
+	);
+	$form['actions'] = array(
+		'#type' => 'actions',
+	);
+	$form['actions']['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Save Changes'),
+	);
+	if (isset($pickem->pid)) {
+		$form_state['storage']['pid'] = $pickem->pid;
+	}
+	
+	return $form;
+}
+
+/**
+ * Submit Callback for Pickem Admin Form
+ */
+function pickem_admin_pickem_form_submit($form, &$form_state) {
+	$values = $form_state['values'];
+	
+	// save changes to database
+	$o = new stdClass();
+	$o->title = $values['title'];
+	$o->description = $values['description']['value'];
+	$o->desc_format = $values['description']['format'];
+	$o->pid = $form_state['storage']['pid'];
+	
+	if (isset($values['startdate'])) {
+		if (!is_int($values['startdate'])) {
+			$d = new DateTime($values['startdate']);
+			$values['startdate_timestamp'] = $d->getTimestamp();
+		}
+	}
+	
+	dpm($values);
+	/*
+	if (drupal_write_record('pickem', $o, array('pid'))) {
+		// reset the cache
+		$cache_key = sprintf('pickem.pickem.%s', $pname);
+		cache_clear_all($cache_key);
+	
+		// 
+		cache_set($cache_key, $pickem, 'cache', CACHE_TEMPORARY);
+	}
+	*/
+}
+
+# ======================= LEGACY v1.0 stuff BELOW ===================================
 function pickem_admin_settings($form, &$form_state) {
 	$form['default_season'] = array(
 		'#type' => 'textfield',

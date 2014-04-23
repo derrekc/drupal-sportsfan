@@ -32,6 +32,10 @@ function pickem_init() {
 
 function pickem_theme($existing, $type, $theme, $path) {
 	return array(
+		'pickem_home' => array(
+			'template' => 'pickem_home',
+			'variables' => array('pickem_content' => NULL),
+		),
 		'pickem_picks' => array(
 			'template' => 'pickem_picks',
 			'variables' => array('entries' => NULL),
@@ -63,12 +67,33 @@ function pickem_theme($existing, $type, $theme, $path) {
 				'standingsTopTen' => NULL,
 				'upcomingGames' => NULL,
 				'pickemPlayer' => NULL,
+				'pickem' => NULL,
 			),
 			'template' => 'pickem-overview',
 		),
 		'pickem_pickem_player_form' => array(
 			'render element' => 'form',
 			'file' => 'pickem.form.inc',
+		),
+		'pickem_pickem__slate_form' => array(
+			'render element' => 'form',
+			'template' => 'pickem_slate_form',
+		),
+		'slate-game' => array(
+			'render element' => 'slate_event',
+			'template' => 'slate_game',
+		),
+		'slate-tourney' => array(
+			'render element' => 'slate_event',
+			'template' => 'slate_tourney',
+		),
+		'slate-series' => array(
+			'render element' => 'slate_event',
+			'template' => 'slate_series',
+		),
+		'active-pickems' => array(
+			'template' => 'active_pickems',
+			'variables' => array('pickems' => NULL),
 		),
 		'slate_compare' => array(
 			'variables' => array('slate' => NULL, 'slate_compare' => NULL, 'games' => NULL, 'player_name' => NULL, 'compare_player' => NULL, 'week' => NULL),
@@ -110,14 +135,36 @@ function pickem_menu() {
 	$_current_season = variable_get('pickem.current_season');
 	
 	$items = array(
-		'loadgoogle' => array(
-			'title' => 'Fetch From Google',
-			'page callback' => 'pickem_fetch_from_google',
-			'access callback' => TRUE,
+		//'loadgoogle' => array(
+		//	'title' => 'Fetch From Google',
+		//	'page callback' => 'pickem_fetch_from_google',
+		//	'access callback' => 'pickem_player_access',
+		//),
+		# ============ ADMIN PATHS =============
+		'admin/pickem' => array(
+			'title' => 'Pick\'Em',
+			'description' => 'Pick\'Em Management',
+			'position' => 'right',
+			'weight' => -5,
+			'page callback' => 'system_admin_menu_block_page',
+			'access arguments' => array('administer site configuration'),
+			'file' => 'system.admin.inc',
+			'file path' => drupal_get_path('module', 'system'),
 		),
-		'currentpicks' => array(
-			'title' => 'Current Picks',
-			'page callback' => 'pickem_picks',
+		'admin/pickem/new' => array(
+			'title' => 'New Pick\'Em Contest',
+			'description' => 'Create a new contest...',
+			'weight' => -5,
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('pickem_admin_pickem_form', 'new'),
+			'file' => 'pickem.admin.inc',
+			'access arguments' => array('administer pickem settings'),
+		),
+		
+		# ============ FRONT END PATHS =============
+		'pickem-home' => array(
+			'title' => 'Sports Pickem Portal',
+			'page callback' => 'pickem_home',
 			'access callback' => TRUE,
 		),
 		'playerform' => array(
@@ -125,7 +172,7 @@ function pickem_menu() {
 			'page callback' => 'drupal_get_form',
 			'page arguments' => array('pickem_pickem_player_form'),
 			'file' => 'pickem.form.inc',
-			'access callback' => TRUE,
+			'access callback' => 'pickem_player_access',
 			'title' => 'Player Form',
 		),
 	);
@@ -140,29 +187,49 @@ function _pickem_pickem_paths() {
 	
 	$dbResult = db_select('pickem','p')
 		->fields('p')
-		->condition('active', 1)
 		->execute();
 		
 	foreach ($dbResult as $row) {
 		$overviewkey = sprintf('pickem/%s', $row->name);
 		$standingskey = sprintf('pickem/%s/standings', $row->name);
+		$adminKey = sprintf('admin/pickem/%s', $row->name);
 		$slatekey = sprintf('pickem/%s/slate', $row->name);
-		$items[$overviewkey] = array(
-			'page callback' => 'pickem_pickem_overview',
-			'page arguments' => array($row->pid),
-			'file' => 'pickem.pages.inc',
-			'access callback' => 'pickem_player_access',
-			'access arguments' => array($row->pid),
+		
+		$items[$adminKey] = array(
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('pickem_admin_pickem_form', $row->name),
+			'file' => 'pickem.admin.inc',
+			'access callback' => 'pickem_admin_access',
+			'access arguments' => array('administer pickem settings'),
 			'title' => $row->title,
 		);
-		$items[$standingskey] = array(
-			'page callback' => 'pickem_pickem_standings',
-			'page arguments' => array($row->pid),
-			'file' => 'pickem.pages.inc',
-			'access callback' => 'pickem_player_access',
-			'access arguments' => array($row->pid),
-			'title' => 'standings',
-		);
+		if ($row->active) {
+			$items[$overviewkey] = array(
+				'page callback' => 'pickem_pickem_overview',
+				'page arguments' => array($row->name),
+				'file' => 'pickem.pages.inc',
+				'access callback' => 'pickem_player_access',
+				'access arguments' => array($row->pid),
+				'title' => $row->title,
+			);
+			$items[$slatekey] = array(
+				'page callback' => 'drupal_get_form',
+				'page arguments' => array('pickem_pickem_slate_form', $row->name),
+				'file' => 'pickem.pages.inc',
+				'access callback' => 'pickem_user_access',
+				'access arguments' => array(sprintf('%s player', $row->name)),
+				'title' => 'Make Your Picks',
+			);
+			$items[$standingskey] = array(
+				'page callback' => 'pickem_pickem_standings',
+				'page arguments' => array($row->pid),
+				'file' => 'pickem.pages.inc',
+				'access callback' => 'pickem_player_access',
+				'access arguments' => array($row->pid),
+				'title' => 'Standings',
+				'type' => MENU_LOCAL_ACTION,
+			);
+		}
 	}
 	return $items;
 }
@@ -172,11 +239,14 @@ function pickem_player_access($pid = NULL) {
 	if ($user->uid == 1) {
 		return TRUE;
 	}
+	if (user_access('administer pickem settings')) {
+		return TRUE;
+	}
 	if ($pid == NULL) {
 		return FALSE;
 	}
-	if (user_access('administer pickem settings')) {
-		return TRUE;
+	if (user_is_anonymous()) {
+		return FALSE;
 	}
 	$res = db_select('pickem_player', 'pp')
 		->fields('pp')
@@ -186,6 +256,28 @@ function pickem_player_access($pid = NULL) {
 	$player = $res->fetchObject();
 	
 	return user_access('pickem player') && !is_null($player);
+}
+
+function pickem_user_access() {
+	global $user;
+	$arguments = func_get_args();
+
+	if ($user->uid == 1) {
+		return TRUE;
+	}
+	
+	foreach($arguments as $role) {
+		if(in_array($role, $user->roles)) {
+			return TRUE;
+		}
+	}
+	
+	foreach($arguments as $permission) {
+		if(user_access($permission)) {
+			return TRUE;
+		}
+	}
+	return FALSE;
 }
 
 function pickem_admin_access() {
@@ -205,6 +297,21 @@ function pickem_admin_access() {
 	return FALSE;
 }
 
+/**
+ * Page Callback for Pickem Home Page
+ */
+function pickem_home() {
+	if (!pickem_user_access('authenticated user')) {
+		drupal_goto('<front>');
+		return;
+	}
+
+	$pickem_content = array();
+	$pickems = PickemManager::activePickems();
+	$pickem_content['active_pickems'] = theme('active-pickems', array('pickems' => $pickems));
+	return theme('pickem_home', array('pickem_content' => $pickem_content));
+}
+
 function pickem_picks($week = NULL) {
 	//require_once(drupal_get_path('module', 'pickem') . '/pickem.model.picks.inc');
 	$sampleData = GoogleSpreadsheetManager::sampleData();
@@ -222,6 +329,14 @@ function pickem_picks($week = NULL) {
 	return $page;
 }
 
+/**
+ * Implements hook_block_view_alter()
+ */
+function pickem_block_view_alter(&$data, $block) {
+	if ($block->module == 'system' && $block->delta == 'powered-by') {
+		$data['content'] = t('Powered by The world\'s greatest college football fan.');
+	}
+}	
 
 function pickem_slate_overview($week = NULL) {
 	if ($week == NULL) {
@@ -558,6 +673,35 @@ function pickem_permission() {
 		),
 	);
 }
+
+function pickem_pick_school_name(&$form, &$form_state) {
+	// get the object ID for this row
+	$objid = $form_state['clicked_button']['#objid'];
+	
+	// target school
+	$target_school_name = $form_state['clicked_button']['#school_name'];
+	
+	// TODO save the pick choice
+	
+	foreach(element_children($form['events'][$objid]['slate_event']['pick_school_name']) as $sname) {
+		$form['events'][$objid]['slate_event']['pick_school_name'][$sname]['#attributes']['class'] = array('btn', 'btn-sm', 'btn-block');
+		if ($sname == $target_school_name) {
+			$form['events'][$objid]['slate_event']['pick_school_name'][$sname]['#attributes']['class'][] = 'btn-primary';
+		}
+		else {
+			$form['events'][$objid]['slate_event']['pick_school_name'][$sname]['#attributes']['class'][] = 'btn-default';
+		}
+	}
+	//return $form_state['clicked_button']['#school_name'];
+	//return kpr(array_merge($form_state, $form['events'][$objid]['slate_event']), TRUE);
+
+	#unset($form_state['triggering_element']);
+	#unset($form_state['clicked_button']);
+	#return kpr($form_state, TRUE);
+
+	return $form['events'][$objid]['slate_event'];
+	#return sprintf('%s | %s', $objid, $target_school_name);
+}
  
 function pickem_schedule_overview() {
 	return t('Coming soon...');
@@ -568,7 +712,11 @@ function pickem_block_info($delta='') {
 		'leaderboard' => array(
 			'info' => 'Pickem Standings Leaderboard',
 			'cache' => DRUPAL_NO_CACHE,
-		)
+		),
+		'active-pickems' => array(
+			'info' => 'Available Pickems',
+			'cache' => DRUPAL_NO_CACHE,
+		),
 	);
 }
 
@@ -577,6 +725,17 @@ function pickem_block_info($delta='') {
  */
 function pickem_block_view($delta='') {
 	global $user;
+	if ($delta == 'active-pickems') {
+		$pickems = PickemManager::activePickems();
+		return array(
+			'subject' => t('Join These Pickem Contests'),
+			'content' => array(
+				'#theme' => 'active-pickems',
+				'#pickems' => $pickems,
+			),
+		);
+	}
+	
 	if ($delta != 'leaderboard') {
 		return '';
 	}	

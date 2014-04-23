@@ -5,6 +5,7 @@ class GoogleSpreadsheetManager {
 	const GAMES_SPREADSHEET_KEY = '1M58ubV1mzlTaHWgs0YUIn_X3KRpx-M8zqAehG80lNVg';
 	const SCHOOLS_SPREADSHEET_KEY = '1mp_TDlGqvrYZssn_1mU6hLfoekvnWeH-LsYHMRfax6o';
 	const CONF_SPREADSHEET_KEY = '1zwJv7FCywucb2KidUzHtaXMfxzxtgpz15nT4xtssrQE';
+	const PICKEM_SPREADSHEET_KEY = '0As8pCtaNjIXJdG5nVDNFWGY3amlQY243akNIU1Y3M3c';
 	const WORKSHEET_URL_PIECE = '%s/feeds/worksheets/%s/public/basic%s';
 	const LIST_URL_PIECE = '%s/feeds/list/%s/%s/public/values';
 
@@ -50,6 +51,34 @@ class GoogleSpreadsheetManager {
 
 		$schedEntries = self::gs_scheduleForTitleKey($worksheetEntries, 'acc', 1);
 		return $schedEntries;
+	}
+
+	public static function fetchPickemSpreadsheetEntries() {
+		$listfeed_filter = function($var) {
+			$r = preg_match('/listfeed/', $var['rel']);
+			return $r == 1;
+		};
+		
+		$feed_url = sprintf(self::WORKSHEET_URL_PIECE,
+			self::FEEDURL_PREFIX,
+			self::PICKEM_SPREADSHEET_KEY,
+			self::QUERY_STRING
+			);
+
+		$worksheet_content = json_decode(file_get_contents($feed_url, 0, self::googleFeedURLContext()), TRUE);
+		$worksheetEntry = $worksheet_content['feed']['entry'][0];
+		$pickemEntries = array();
+		
+		try {
+			$listfeed_url = array_pop(array_filter($worksheetEntry['link'], $listfeed_filter));
+			$list_query_url = str_replace('basic', 'values', sprintf("%s%s", $listfeed_url['href'], self::QUERY_STRING));
+
+			$list_content = json_decode(file_get_contents($list_query_url, 0, self::googleFeedURLContext()), TRUE);
+			$pickemEntries = $list_content['feed']['entry'];
+		} catch(Exception $e) {
+			//
+		}
+		return $pickemEntries;
 	}
 
 	public static function fetchConferenceSpreadsheetEntries() {

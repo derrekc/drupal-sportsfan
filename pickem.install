@@ -42,6 +42,7 @@ function pickem_uninstall() {
 	$dbres = db_select('pickem', 'p')->fields('p')->execute();
 	foreach ($dbres as $p) {
 		user_role_delete(sprintf('%s player', $p->name));
+		user_role_delete(sprintf('%s manager', $p->name));
 	}
 }
 
@@ -49,7 +50,9 @@ function _pickem_load_pickems() {
 	$pickems = GoogleSpreadsheetManager::fetchPickemSpreadsheetEntries();
 	foreach ($pickems as $p) {
 		$o = new stdClass();
-		$keys = array('title','name','season','sport','active','autoconference','autoschool','description','weeks','startdate','joindeadline','firstdayofweek');
+		$keys = array('title','name','season','sport','active','autoconference',
+			'autoschool','description','weeks','startdate','joindeadline','firstdayofweek',
+			'pickformat','picksperweek',);
 		foreach($keys as $key) {
 			$o->{$key} = $p['gsx$'.$key]['$t'];
 		}
@@ -59,6 +62,9 @@ function _pickem_load_pickems() {
 			// create role for this pickem
 			$role = new stdClass();
 			$role->name = sprintf('%s player', $o->name);
+			user_role_save($role);
+			$role = new stdClass();
+			$role->name = sprintf('%s manager', $o->name);
 			user_role_save($role);
 		}
 	}	
@@ -349,6 +355,8 @@ function pickem_schema() {
 				'joindeadline' => array('type' => 'int', 'default' => 0),
 				'startdate' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0,),
 				'weeks' => array('type' => 'int', 'unsigned' => TRUE, 'size' => 'tiny',),
+				'pickformat' => array('type' => 'varchar', 'length' => 15, 'default' => 'straight',),
+				'picksperweek' => array('type' => 'int', 'size' => 'tiny',),
 			),
 			'primary key' => array('pid'),
 			'unique keys' => array('pname' => array('name')),

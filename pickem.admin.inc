@@ -95,13 +95,17 @@ function pickem_admin_pickem_form($form, &$form_state, $pname) {
 		'#title' => t('Start Date'),
 		'#default_value' => date('Y-m-d', $pickem->startdate),
 	);
-	dpm($pickem);
-	dpm(date('m/d/Y', $pickem->startdate));
 	$form['weeks'] = array(
 		'#type' => 'textfield',
 		'#size' => '4',
 		'#default_value' => $pickem->weeks,
 		'#title' => t('Number of Weeks'),
+	);
+	$form['picksperweek'] = array(
+		'#type' => 'textfield',
+		'#size' => 4,
+		'#default_value' => $pickem->picksperweek,
+		'#title' => t('Max Picks per Week'),
 	);
 	$form['joindeadline'] = array(
 		'#type' => 'date_popup',

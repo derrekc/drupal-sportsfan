@@ -91,6 +91,10 @@ function pickem_theme($existing, $type, $theme, $path) {
 			'render element' => 'slate_event',
 			'template' => 'slate_series',
 		),
+		'pickem-form-notes' => array(
+			'template' => 'pickem_form_notes',
+			'variables' => array(),
+		),
 		'active-pickems' => array(
 			'template' => 'active_pickems',
 			'variables' => array('pickems' => NULL),
@@ -162,7 +166,7 @@ function pickem_menu() {
 		),
 		
 		# ============ FRONT END PATHS =============
-		'pickem-home' => array(
+		'pickem' => array(
 			'title' => 'Sports Pickem Portal',
 			'page callback' => 'pickem_home',
 			'access callback' => TRUE,
@@ -302,13 +306,23 @@ function pickem_admin_access() {
  */
 function pickem_home() {
 	if (!pickem_user_access('authenticated user')) {
-		drupal_goto('<front>');
+		drupal_goto('node');
 		return;
 	}
+	global $user;
 
 	$pickem_content = array();
 	$pickems = PickemManager::activePickems();
-	$pickem_content['active_pickems'] = theme('active-pickems', array('pickems' => $pickems));
+	for ($i = 0; $i < count($pickems); $i++) {
+		$lookup = sprintf('%s player', $pickems[$i]->name);
+		$lookup_manager = sprintf('%s manager', $pickems[$i]->name);
+		$pickems[$i]->user_can_play = in_array($lookup, $user->roles) || in_array('administrator', $user->roles);
+		$pickems[$i]->user_can_manage = in_array($lookup_manager, $user->roles) || in_array('administrator', $user->roles);
+	}
+	$pickem_content['active_pickems'] = 
+		theme('active-pickems', 
+			array('pickems' => $pickems)
+		);
 	return theme('pickem_home', array('pickem_content' => $pickem_content));
 }
 
@@ -682,25 +696,19 @@ function pickem_pick_school_name(&$form, &$form_state) {
 	$target_school_name = $form_state['clicked_button']['#school_name'];
 	
 	// TODO save the pick choice
-	
+	// TODO in the session
+		
 	foreach(element_children($form['events'][$objid]['slate_event']['pick_school_name']) as $sname) {
 		$form['events'][$objid]['slate_event']['pick_school_name'][$sname]['#attributes']['class'] = array('btn', 'btn-sm', 'btn-block');
 		if ($sname == $target_school_name) {
-			$form['events'][$objid]['slate_event']['pick_school_name'][$sname]['#attributes']['class'][] = 'btn-primary';
+			$form['events'][$objid]['slate_event']['pick_school_name'][$sname]['#attributes']['class'][] = 'btn-info';
 		}
 		else {
 			$form['events'][$objid]['slate_event']['pick_school_name'][$sname]['#attributes']['class'][] = 'btn-default';
 		}
 	}
-	//return $form_state['clicked_button']['#school_name'];
-	//return kpr(array_merge($form_state, $form['events'][$objid]['slate_event']), TRUE);
-
-	#unset($form_state['triggering_element']);
-	#unset($form_state['clicked_button']);
-	#return kpr($form_state, TRUE);
 
 	return $form['events'][$objid]['slate_event'];
-	#return sprintf('%s | %s', $objid, $target_school_name);
 }
  
 function pickem_schedule_overview() {

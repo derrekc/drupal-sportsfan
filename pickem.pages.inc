@@ -83,11 +83,15 @@ function pickem_pickem_slate_form($form, &$form_state, $pname, $week = NULL) {
 		return $form;
 	}
 
-	if (isset($form_state['triggering_element'])) {
-		$form_state['rebuild'] = FALSE;
+	if (!isset($form_state['values'])) {
+		// new form
+		$_SESSION['picks'][$pname] = array();
 	}
-
 	$upcomingSlate = SlateManager::slateForWeek($pickem->pid, 1, $pickem->season);
+	$form['notes'] = array(
+		'#theme' => 'pickem-form-notes',
+	);
+	
 	$form['events']['#tree'] = TRUE;
 	$form['debugme'] = array(
 		'#type' => 'container',
@@ -110,6 +114,17 @@ function pickem_pickem_slate_form($form, &$form_state, $pname, $week = NULL) {
 				'pid' => '',
 			),
 		);
+		$opponent_options = array();
+		foreach ($event->opponents() as $opponent) {
+			$opponent_options[$opponent->name] = $opponent->displaytitle;
+		}
+		/*
+		$form['events'][$event->objid]['slate_event']['pick_school_name']['choose'] = array(
+			'#type' => 'radios',
+			'#options' => $opponent_options,
+			//'#default_value' => $event->pick_school_name,
+		);
+		*/
 		foreach ($event->opponents() as $opponent) {
 			$form['events'][$event->objid]['slate_event']['pick_school_name'][$opponent->name] = array(
 				'#type' => 'button',
@@ -119,7 +134,7 @@ function pickem_pickem_slate_form($form, &$form_state, $pname, $week = NULL) {
 					'pid' => '',
 				),
 				'#name' => sprintf('slate-op-%s-%s', $event->objid, $opponent->name),
-				'#pid' => '',
+				'#pkid' => '',
 				'#objid' => $event->objid,
 				'#school_name' => $opponent->name,
 				'#ajax' => array(
@@ -131,6 +146,23 @@ function pickem_pickem_slate_form($form, &$form_state, $pname, $week = NULL) {
 				),
 			);
 		}
+		$form['actions'] = array(
+			'#type' => 'actions'
+		);
+		$form['actions']['confirmpicks'] = array(
+			'#type' => 'submit',
+			'#value' => t('Confirm Picks'),
+			'#attributes' => array(
+				'class' => array('btn','btn-primary'),
+			),
+		);
+		$form['actions']['clearpicks'] = array(
+			'#type' => 'submit',
+			'#value' => t('Clear Picks'),
+			'#attributes' => array(
+				'class' => array('btn','btn-default'),
+			),
+		);
 	}
 	return $form;
 }

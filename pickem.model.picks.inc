@@ -1,6 +1,6 @@
 <?php
 
-class PickemModel {
+class PickemEventModel {
 	public $objtype = '';
 	public $objid = '';
 	
@@ -9,6 +9,10 @@ class PickemModel {
 	}
 	
 	public function displayTitle() {
+		return '';
+	}
+	
+	public function gameDate() {
 		return '';
 	}
 }
@@ -58,6 +62,8 @@ class PickemManager {
 		$o->firstdayofweek = 0;	// sunday by default
 		$o->startdate = 0;
 		$o->weeks = 1;
+		$o->pickformat = 'straight';
+		$o->picksperweek = 0;
 		
 		return $o;
 	}
@@ -143,7 +149,7 @@ class SlateManager {
 	}
 }
 
-class Game extends PickemModel {
+class Game extends PickemEventModel {
 	public function __construct($dbobj) {
 		foreach (get_object_vars($dbobj) as $oKey => $oVal) {
 			$this->{$oKey} = $oVal;
@@ -159,6 +165,10 @@ class Game extends PickemModel {
 			$this->neutral == 'Y' ? 'vs.' : 'at',
 			$this->host_school
 			);
+	}
+	
+	public function gameDate($type='medium') {
+		return format_date($this->game_date, $type);
 	}
 
 	public function opponentsForSelectElement() {
@@ -228,7 +238,7 @@ class GameManager {
 	}
 }
 
-class Tourney extends PickemModel {
+class Tourney extends PickemEventModel {
 	public function __construct($dbobj) {
 		foreach (get_object_vars($dbobj) as $oKey => $oVal) {
 			$this->{$oKey} = $oVal;
@@ -264,7 +274,7 @@ class TourneyManager {
 	}
 }
 
-class Series extends PickemModel {
+class Series extends PickemEventModel {
 	public function __construct($dbobj) {
 		foreach (get_object_vars($dbobj) as $oKey => $oVal) {
 			$this->{$oKey} = $oVal;

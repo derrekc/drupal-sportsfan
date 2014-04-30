@@ -12,9 +12,18 @@ class PickemEventModel {
 		return '';
 	}
 	
+	public function displayTitleMobile() {
+		return $this->displayTitle();
+	}
+	
 	public function gameDate() {
 		return '';
 	}
+	
+	public function eventDate($type='medium') {
+		return '';
+	}
+	
 }
 
 class Pickem {
@@ -24,8 +33,12 @@ class Pickem {
 		}
 	}
 
-	public function currentWeek() {
+	public function currentWeek($ts=NULL) {
 		return 1;
+	}
+	
+	public function active() {
+		return in_array($this->active, array(1, 'Y', 'y'));
 	}
 }
 
@@ -87,16 +100,15 @@ class PickemManager {
 		return $pickems;
 	}
 
-	public static function loadPickemPlayer($uid) {
-		$pickem_player = drupal_static(__FUNCTION__);
-		if (!isset($pickem)) {
-			$cache_key = 'pickem.pickem_player';
-			if ($cache = cache_get($cache_key)) {
-				$pickem_player = $cache->data;
-			}
-			else {
-				$dbres = db_select('pickem_player', 'pp')->fields('pp')->condition('uid', $uid)->execute();
-				$pickem_player = $dbres->fetchObject();
+	public static function loadPickemPlayer($uid, $pid) {
+		$cache_key = sprintf('pickem.pickem_player.%s.%s', $uid, $pid);
+		if ($cache = cache_get($cache_key)) {
+			$pickem_player = $cache->data;
+		}
+		else {
+			$dbres = db_select('pickem_player', 'pp')->fields('pp')->condition('pickem_id', $pid)->condition('uid', $uid)->execute();
+			$pickem_player = $dbres->fetchObject();
+			if (!is_null($pickem_player)) {
 				cache_set($cache_key, $pickem_player, 'cache', CACHE_TEMPORARY);
 			}
 		}
@@ -113,10 +125,158 @@ class PickemManager {
 			'nba' => t('NBA'),
 		);
 	}
+	
+	public static function addUserToPickem($user, $pickem) {
+		$o = new stdClass();
+		$o->uid = $user->uid;
+		$o->pickem_id = $pickem->pid;
+		drupal_write_record('pickem_player', $o);
+	}
+	
+	public static function userNeedsProvisioning($pickem_id, $uid, $week) {
+		$select = db_select('pick', 'pk')
+			->condition('pickem_id', $pickem_id)
+			->condition('uid', $uid)
+			->condition('week', $week);
+		$select->addExpression('COUNT(pkid)', 'pick_count');
+		$dbres = $select->execute();
+		$row = $dbres->fetchObject();
+		return $row->pick_count == 0;
+	}
+	
+	public static function provisionSlateForUser($pickem_id, $uid, $week, $season) {
+		$dbres = db_select('slate', 's')->fields('s')
+			->condition('s.pickem_id', $pickem_id)
+			->execute();
+
+		foreach ($dbres as $row) {
+			$o = stdClass();
+			$o->objid = $row->objid;
+			$o->objtype = $row->objtype;
+			$o->week = $week;
+			$o->season = $season;
+			$o->pickem_id = $pickem_id;
+			$o->uid = $uid;
+			drupal_write_record('pick', $o);
+		}
+	}
+}
+
+class Pick {
+	public function __construct($dbobj) {
+		foreach (get_object_vars($dbobj) as $oKey => $oVal) {
+			$this->{$oKey} = $oVal;
+		}
+	}
+	
+	public function pickedSchool() {
+		// If the user (player) made an initial pick for the target game, 
+		// then turned around and changed his/her mind, but failed to 'finalize' (save)
+		// the pick during the session, return that value
+		if (in_array('pick_school_name_session', get_object_vars($this))) {
+			return $this->pick_school_name_session;
+		}
+		return $this->pick_school_name;
+	}
+}
+
+class PickManager {
+	public static function loadPicks($pickem, $uid, $targetWeek=NULL) {
+		
+		$targetWeek = is_null($targetWeek) ? $pickem->currentWeek() : $targetWeek;
+		
+		$dbres = db_select('pick', 'pk')->fields('pk')->execute();
+		$picks = array();
+		foreach ($dbres as $row) {
+			
+			// detect presence of a potential change to this pick
+			if (isset($_SESSION['picks'][$uid][$row->pkid])) {
+				$row->pick_school_name_session = $_SESSION['picks'][$uid][$row->pkid];
+			}
+			
+			$picks[] = new Pick($row);
+		}
+
+		return $picks;
+	}
+	
+	public static function addDataToSlateObject(&$slateRow) {
+		$select = db_select('pick', 'pk')->fields('pk', array('pick_school_name', 'pkid', 'correct'));
+		$select->join('school', 'pick_school', 'pick_school.name = pk.pick_school_name');
+		$select->addField('pick_school', 'displaytitle', 'pick_school');
+		$select->condition('pk.objid', $slateRow->objid);
+		$select->condition('pk.objtype', $slateRow->objtype);
+		$dbres = $select->execute();
+			
+		$pick = $dbres->fetchObject();
+		$slateRow->pick = $pick;
+	}
 }
 
 class Slate {
 
+}
+
+class SlateEvent {
+	private $_sportEvent = NULL;
+	private $_pick = NULL;
+	
+	public function __construct($sportEvent) {
+		$this->_sportEvent = $sportEvent;
+		
+		if (isset($sportEvent->pick)) {
+			$this->_pick = $sportEvent->pick;
+			unset($sportEvent->pick);
+		}
+	}
+	
+	public function sportEvent() {
+		return $this->_sportEvent;
+	}
+	
+	public function sportEventType() {
+		return $this->_sportEvent->objtype;
+	}
+	
+	public function sportEventId() {
+		return $this->_sportEvent->objid;
+	}
+	
+	public function displayTitle() {
+		return $this->_sportEvent->displayTitle();
+	}
+	
+	public function displayTitleMobile() {
+		return $this->_sportEvent->displayTitleMobile();
+	}
+	
+	public function eventDate($drupalDateType='medium') {
+		return $this->_sportEvent->eventDate($drupalDateType);
+	}
+	
+	public function opponents() {
+		return $this->_sportEvent->opponents();
+	}
+	
+	public function hasPick() {
+		return !is_null($this->_pick) && isset($this->_pick->pkid);
+	}
+	
+	public function pick() {
+		return $this->_pick;
+	}
+	
+	public function pickId($noPickDefault='new') {
+		return $this->hasPick() ? $this->_pick->pkid : $noPickDefault;
+	}
+	
+	public function pick_school_name() {
+		return $this->hasPick() ? $this->_pick->pick_school_name : '';
+	}
+	
+	public function pick_school() {
+		return $this->hasPick() ? $this->_pick->pick_school : '';
+	}
 }
 
 class SlateManager {
@@ -125,6 +285,7 @@ class SlateManager {
 			->fields('sl')
 			->condition('sl.week', $week)
 			->condition('sl.season', $season)
+			->condition('sl.pid', $pid)
 			->execute();
 
 		$rows = array();
@@ -138,8 +299,9 @@ class SlateManager {
 			else if ($row->objtype == 'tourney') {
 				TourneyManager::addDataToSlateObject($row);
 			}
+			PickManager::addDataToSlateObject($row);
 			$class = ucfirst($row->objtype);
-			$rows[] = new $class($row);
+			$rows[] = new SlateEvent(new $class($row));
 		}
 		return $rows;
 	}
@@ -165,6 +327,25 @@ class Game extends PickemEventModel {
 			$this->neutral == 'Y' ? 'vs.' : 'at',
 			$this->host_school
 			);
+	}
+
+	public function displayTitleMobile() {
+		if (!empty($this->title)) {
+			return $this->title;
+		}
+		return sprintf('%s %s<br />%s',
+			$this->visiting_school,
+			$this->neutral == 'Y' ? 'vs.' : 'at',
+			$this->host_school
+			);
+	}
+	
+	public function vs_at_label() {
+		return $this->neutral == 'Y' ? 'vs.' : 'at';
+	}
+	
+	public function eventDate($type='medium') {
+		return $this->gameDate($type);
 	}
 	
 	public function gameDate($type='medium') {
@@ -226,9 +407,18 @@ class GameManager {
 		$query = db_select('game', 'g');
 		$query->join('school', 'host', 'host.name = g.host_school_name');
 		$query->join('school', 'visiting', 'visiting.name = g.visiting_school_name');
+		
+		//$query->leftJoin('pick', 'p', "(p.objid = g.gid AND p.objtype='game')");
+		//$query->leftJoin('school', 'pschool', 'p.pick_school_name = pschool.name');
+		
 		$query->fields('g');
 		$query->addField('host', 'displaytitle', 'host_school');
 		$query->addField('visiting', 'displaytitle', 'visiting_school');
+		
+		//$query->addField('pschool', 'displaytitle', 'pick_school');
+		//$query->addField('p', 'pick_school_name');
+		//$query->addField('p', 'pkid');
+		
 		$query->condition('gid', $slateObject->objid);
 		$dbres = $query->execute();
 		$o = $dbres->fetchObject();
@@ -247,6 +437,10 @@ class Tourney extends PickemEventModel {
 	
 	public function opponents() {
 		return $this->opponents;
+	}
+	
+	public function eventDate($type='medium') {
+		return format_date($this->start, $type);
 	}
 }
 
@@ -279,6 +473,10 @@ class Series extends PickemEventModel {
 		foreach (get_object_vars($dbobj) as $oKey => $oVal) {
 			$this->{$oKey} = $oVal;
 		}
+	}
+	
+	public function eventDate($type='medium') {
+		return format_date($this->start, $type);
 	}
 }
 

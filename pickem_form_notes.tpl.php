@@ -12,7 +12,7 @@
 	</p>
 	<h4>Workflow for Making Picks</h4>
 	<ul>
-		<li>Clicking a button (e.g. "Pick Duke") will <strong><em>temporarily</em></strong> save the pick.</li>
+		<li>Clicking a button (e.g. "Duke") will <strong><em>temporarily</em></strong> save the pick.</li>
 		<li>Picks aren't finalized until the <strong><em>Finalize Picks</em></strong> is clicked.
 	</ul>
 	<p>Is that easier than last season's design?</p>

@@ -30,6 +30,82 @@ function pickem_init() {
 	*/
 }
 
+function pickem_menu() {
+	$_current_season = variable_get('pickem.current_season');
+	
+	$items = array(
+		//'loadgoogle' => array(
+		//	'title' => 'Fetch From Google',
+		//	'page callback' => 'pickem_fetch_from_google',
+		//	'access callback' => 'pickem_player_access',
+		//),
+		# ============ ADMIN PATHS =============
+		'admin/pickem' => array(
+			'title' => 'Pick\'Em',
+			'description' => 'Pick\'Em Management',
+			'position' => 'right',
+			'weight' => -5,
+			'page callback' => 'system_admin_menu_block_page',
+			'access arguments' => array('administer site configuration'),
+			'file' => 'system.admin.inc',
+			'file path' => drupal_get_path('module', 'system'),
+		),
+		'admin/pickem/new' => array(
+			'title' => 'New Pick\'Em Contest',
+			'description' => 'Create a new contest...',
+			'weight' => -5,
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('pickem_admin_pickem_form', 'new'),
+			'file' => 'pickem.admin.inc',
+			'access arguments' => array('administer pickem settings'),
+		),
+		
+		# ============ FRONT END PATHS =============
+		'pickem' => array(
+			'title' => 'Sports Pickem Portal',
+			'page callback' => 'pickem_home',
+			'access callback' => TRUE,
+		),
+		'playerform' => array(
+			'title' => 'Player Form',
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('pickem_pickem_player_form'),
+			'file' => 'pickem.form.inc',
+			'access callback' => 'pickem_player_access',
+			'title' => 'Player Form',
+		),
+		'request-pickem' => array(
+			'title' => 'Request Pickem',
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('pickem_request_new_pickem'),
+			'access callback' => 'pickem_user_access',
+			'access arguments' => array('authenticated user'),
+			'file' => 'pickem.form.inc',
+		),
+		'user/%user/pickem-settings' => array(
+			'title' => 'Pickem Settings',
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('pickem_user_pickem_settings_form', 1),
+			'access callback' => 'pickem_user_access',
+			'access arguments' => array('authenticated user'),
+			'type' => MENU_LOCAL_TASK,
+		),
+		
+		# ============= ADMIN UTILITY PATHS =============
+		'pickem/clear-session' => array(
+			'page callback' => 'pickem_clear_pickem_session_data',
+			'page arguments' => array(2,3),
+			'file' => 'pickem.util.inc',
+			'access callback' => 'pickem_user_access',
+			'access arguments' => array('administer pickem settings'),
+		),
+	);
+	
+	$items = array_merge($items, _pickem_pickem_paths($items));
+	
+	return $items;
+}
+
 function pickem_theme($existing, $type, $theme, $path) {
 	return array(
 		'pickem_home' => array(
@@ -95,6 +171,10 @@ function pickem_theme($existing, $type, $theme, $path) {
 			'template' => 'pickem_form_notes',
 			'variables' => array(),
 		),
+		'modal-provisioning-needed' => array(
+			'template' => 'provisioning-needed',
+			'variables' => array(),
+		),
 		'active-pickems' => array(
 			'template' => 'active_pickems',
 			'variables' => array('pickems' => NULL),
@@ -103,22 +183,6 @@ function pickem_theme($existing, $type, $theme, $path) {
 			'variables' => array('slate' => NULL, 'slate_compare' => NULL, 'games' => NULL, 'player_name' => NULL, 'compare_player' => NULL, 'week' => NULL),
 		)
 	);
-}
-
-function pickem_form_alter(&$form, &$form_state, $form_id) {
-	if ($form_id == 'pickem_slate_form') {
-		$form['#theme'] = array('slate_form');
-	}
-	if ($form_id == 'pickem_admin_week_games') {
-		$form['#theme'] = array('admin_scoreboard');
-	}
-}
-
-/**
- * Implements hook_preprocess_page()
- */
-function pickem_preprocess_page($variables) {
-	//kpr($variables);
 }
 
 /** 
@@ -135,55 +199,44 @@ function pickem_action_info() {
 	); 
 }
 
-function pickem_menu() {
-	$_current_season = variable_get('pickem.current_season');
-	
-	$items = array(
-		//'loadgoogle' => array(
-		//	'title' => 'Fetch From Google',
-		//	'page callback' => 'pickem_fetch_from_google',
-		//	'access callback' => 'pickem_player_access',
-		//),
-		# ============ ADMIN PATHS =============
-		'admin/pickem' => array(
-			'title' => 'Pick\'Em',
-			'description' => 'Pick\'Em Management',
-			'position' => 'right',
-			'weight' => -5,
-			'page callback' => 'system_admin_menu_block_page',
-			'access arguments' => array('administer site configuration'),
-			'file' => 'system.admin.inc',
-			'file path' => drupal_get_path('module', 'system'),
-		),
-		'admin/pickem/new' => array(
-			'title' => 'New Pick\'Em Contest',
-			'description' => 'Create a new contest...',
-			'weight' => -5,
-			'page callback' => 'drupal_get_form',
-			'page arguments' => array('pickem_admin_pickem_form', 'new'),
-			'file' => 'pickem.admin.inc',
-			'access arguments' => array('administer pickem settings'),
-		),
-		
-		# ============ FRONT END PATHS =============
-		'pickem' => array(
-			'title' => 'Sports Pickem Portal',
-			'page callback' => 'pickem_home',
-			'access callback' => TRUE,
-		),
-		'playerform' => array(
-			'title' => 'Player Form',
-			'page callback' => 'drupal_get_form',
-			'page arguments' => array('pickem_pickem_player_form'),
-			'file' => 'pickem.form.inc',
-			'access callback' => 'pickem_player_access',
-			'title' => 'Player Form',
+/**
+ * 
+ */
+function pickem_entity_info() {
+	return array(
+		'sportingevent' => array(
+			'label' => t('Sporting Event'),
+			'plural label' => t('Sporting Events'),
+			'entity class' => 'Entity',
+			'controller class' => 'EntityAPIController',
+			'base table' => 'sportingevent',
+			'entity keys' => array(
+				'id' => 'id'
+			),
+			'label callback' => 'entity_class_label',
+			'uri callback' => 'entity_class_uri',
 		),
 	);
-	
-	$items = array_merge($items, _pickem_pickem_paths($items));
-	
-	return $items;
+}
+
+function pickem_form_alter(&$form, &$form_state, $form_id) {
+	if ($form_id == 'pickem_slate_form') {
+		$form['#theme'] = array('slate_form');
+	}
+	if ($form_id == 'pickem_admin_week_games') {
+		$form['#theme'] = array('admin_scoreboard');
+	}
+}
+
+function pickem_menu_local_tasks_alter(&$data, $router_item, $root_path) {
+	//dpm($root_path);
+}
+
+/**
+ * Implements hook_preprocess_page()
+ */
+function pickem_preprocess_page($variables) {
+	//kpr($variables);
 }
 
 function _pickem_pickem_paths() {
@@ -198,6 +251,9 @@ function _pickem_pickem_paths() {
 		$standingskey = sprintf('pickem/%s/standings', $row->name);
 		$adminKey = sprintf('admin/pickem/%s', $row->name);
 		$slatekey = sprintf('pickem/%s/slate', $row->name);
+		$joinKey = sprintf('pickem/%s/join', $row->name);
+		$playersetupKey = sprintf('pickem/%s/player-setup', $row->name);
+		$provisionSlateKey = sprintf('pickem/%s/provision-slate', $row->name);
 		
 		$items[$adminKey] = array(
 			'page callback' => 'drupal_get_form',
@@ -223,6 +279,28 @@ function _pickem_pickem_paths() {
 				'access callback' => 'pickem_user_access',
 				'access arguments' => array(sprintf('%s player', $row->name)),
 				'title' => 'Make Your Picks',
+			);
+			$items[$joinKey] = array(
+				'page callback' => 'drupal_get_form',
+				'page arguments' => array('pickem_pickem_user_join_form', 1),
+				'access callback' => 'pickem_user_access',
+				'access arguments' => array('authenticated user'),
+				'type' => MENU_CALLBACK,
+			);
+			$items[$playersetupKey] = array(
+				'page callback' => 'drupal_get_form',
+				'page arguments' => array('pickem_pickem_player_setup_form'),
+				'file' => 'pickem.pages.inc',
+				'access callback' => 'pickem_user_access',
+				'access arguments' => array(sprintf('%s player', $row->name)),
+				'title' => sprintf('Player options for %s', $row->title),
+			);
+			$items[$provisionSlateKey] = array(
+				'page callback' => 'pickem_pickem_provision_slate',
+				'page arguments' => array(3),
+				'file' => 'pickem.pages.inc',
+				'access callback' => 'pickem_user_access',
+				'access arguments' => array(sprintf('%s player', $row->name)),
 			);
 			$items[$standingskey] = array(
 				'page callback' => 'pickem_pickem_standings',
@@ -301,14 +379,67 @@ function pickem_admin_access() {
 	return FALSE;
 }
 
+function pickem_permission() {
+	return array(
+		'administer pickem settings' => array(
+			'title' => t('Administer Pickem Setttings'),
+			'description' => t('Perform administration tasks on Pickem settings'),
+		),
+		'administer pickem games' => array(
+			'title' => t('Administer Pickem Games'),
+			'description' => t('Perform administration tasks on Pickem games'),
+		),
+		'pickem player' => array(
+			'title' => t('Make picks in the pickem contest'),
+			'description' => t('Can play the pickem content(s)'),
+		),
+	);
+}
+
+/*============= ALTERED FORMS =============*/
+
+/* ================= PAGE CALLBACKS ===================== */
+function pickem_user_pickem_settings_form($form, &$form_state) {
+	global $user;
+	$form['#parents'] = array();
+	
+	$dbres = db_select('pickem', 'p')
+		->fields('p', array('name', 'title'))
+		->condition('active', '1')
+		->execute();
+	foreach ($dbres as $r) {
+		$key = sprintf('%s_user_default_pick', $r->name);
+		$field = field_info_field($key);
+		$instance = field_info_instance('user', $key, 'pickem');
+		$items = field_get_items('user', $user, $key);
+		
+		$form[$r->name] = array(
+			'#type' => 'fieldset',
+			'#title' => t($r->title),
+			'#collapsible' => TRUE,
+			'#collapsed' => FALSE,
+			'#tree' => TRUE,
+		);
+		$form[$r->name][$key] = field_default_form('user', $user, $field, $instance, LANGUAGE_NONE, $items, $form, $form_state);
+	}	
+	$form['actions'] = array(
+		'#type' => 'actions',
+	);
+	$form['actions']['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Save Changes'),
+	);
+	return $form;
+}
+
 /**
  * Page Callback for Pickem Home Page
  */
 function pickem_home() {
-	if (!pickem_user_access('authenticated user')) {
-		drupal_goto('node');
-		return;
-	}
+	//if (!pickem_user_access('authenticated user')) {
+	//	drupal_goto('node');
+	//	return;
+	//}
 	global $user;
 
 	$pickem_content = array();
@@ -316,14 +447,156 @@ function pickem_home() {
 	for ($i = 0; $i < count($pickems); $i++) {
 		$lookup = sprintf('%s player', $pickems[$i]->name);
 		$lookup_manager = sprintf('%s manager', $pickems[$i]->name);
-		$pickems[$i]->user_can_play = in_array($lookup, $user->roles) || in_array('administrator', $user->roles);
-		$pickems[$i]->user_can_manage = in_array($lookup_manager, $user->roles) || in_array('administrator', $user->roles);
+		$pickems[$i]->ui_actions = array();
+		
+		if (user_is_logged_in()) {
+			$user_can_play = in_array($lookup, $user->roles) || in_array('administrator', $user->roles);
+			$user_can_manage = in_array($lookup_manager, $user->roles) || in_array('administrator', $user->roles);
+			if ($user_can_play) {
+				$pickems[$i]->ui_actions[] = array(
+					'#type' => 'markup',
+					'#markup' => l(t('Overview/Standings'), sprintf('pickem/%s', $pickems[$i]->name), 
+						array(
+							'attributes' => array('class' => array('btn', 'btn-primary'))
+						)
+					),
+				);
+				$pickems[$i]->ui_actions[] = array(
+					'#type' => 'markup',
+					'#markup' => l(t('Play / Make Picks'), sprintf('pickem/%s/slate', $pickems[$i]->name), 
+						array(
+							'attributes' => array('class' => array('btn', 'btn-default'))
+						)
+					),
+				);
+			}
+			else {
+				$pickems[$i]->ui_actions[] = array(
+					'#type' => 'markup',
+					'#markup' => l(t('Join This Pickem'), sprintf('pickem/%s/join', $pickems[$i]->name), 
+						array(
+							'attributes' => array('class' => array('btn', 'btn-default'))
+						)
+					),
+				);
+			}
+			if ($user_can_manage) {
+				$pickems[$i]->ui_actions[] = array(
+					'#type' => 'markup',
+					'#markup' => l(t('Manage'), sprintf('pickem/%s/manage', $pickems[$i]->name), 
+						array(
+							'attributes' => array('class' => array('btn', 'btn-info'))
+						)
+					),
+				);
+			}
+		}
+		else {
+			$pickems[$i]->ui_actions[] = array(
+				'#type' => 'markup',
+				'#markup' => l(t('Create Account'), 'user', 
+					array(
+						'attributes' => array('class' => array('btn', 'btn-primary'))
+					)
+				),
+			);		
+		}
 	}
 	$pickem_content['active_pickems'] = 
 		theme('active-pickems', 
 			array('pickems' => $pickems)
 		);
 	return theme('pickem_home', array('pickem_content' => $pickem_content));
+}
+
+/**
+ * Page callback for user join request
+ */
+function pickem_pickem_user_join_form($form, &$form_state, $pname) {
+	global $user;
+
+	$pickem = PickemManager::loadPickem($pname);
+	$player = PickemManager::loadPickemPlayer($user->uid, $pickem->pid);
+	$form['#parents'] = array();
+	
+	drupal_set_title(sprintf('Join %s', $pickem->title));
+	
+	// if applicable, show the rules to the user
+	// using taxonomy where a node is retrieved using term = <$pname> and term = rules
+	$pname_term = taxonomy_get_term_by_name($pname);
+	$rules_term = taxonomy_get_term_by_name('rules');
+	if (count($pname_term)) {
+		$pname_term = array_shift($pname_term);
+	}
+	
+	$node_ids = taxonomy_select_nodes($pname_term->tid);
+	if (count($node_ids)) {		
+		$node = node_load($node_ids[0]);
+		$form['rules'] = array(
+			'#type' => 'markup',
+			'#markup' => 	$node->body['und'][0]['safe_value'],
+		);
+	}
+
+	$already_joined = !empty($player) || in_array('administrator', $user->roles); 
+	
+	// load user option(s)
+	if (!$already_joined) {
+		$field_key = sprintf('%s_user_default_pick', $pname);
+		$field = field_info_field($field_key);
+		if ($field) {
+			$instance = field_info_instance('user', $field_key, 'user');
+			$items = field_get_items('user', $user, $field_key);
+			$form['default_pick'] = field_default_form('user', $user, $field, $instance, LANGUAGE_NONE, $items, $form, $form_state);
+			//$form['default_pick'][$field_key]['und'][0]['value']['#required'] = TRUE;
+			$form['default_pick'][$field_key]['und']['#required'] = TRUE;
+			$form['default_pick'][$field_key]['#required'] = TRUE;
+		}
+	}
+	
+	$form_state['pickem'] = $pickem;
+		
+	$form['actions'] = array('#type' => 'actions');
+	if ($already_joined) {
+		$form['actions']['already_joined'] = array(
+			'#type' => 'markup',
+			'#markup' => l(t('Make Picks'), 'pickem/' . $pname . '/slate', 
+					array('attributes' => array('class' => array('btn', 'btn-primary')))),
+			'#suffix' => '&nbsp;',
+		);
+	}
+	$form['actions']['accept'] = array(
+		'#type' => 'submit',
+		'#value' => $already_joined ? t('You already joined') : t('Join'),
+		'#attributes' => array(
+			'class' => array('btn', 'btn-info')
+		),
+		'#disabled' => $already_joined,
+	);
+	return $form;
+}
+
+function pickem_pickem_user_join_form_submit($form, &$form_state) {
+	global $user;
+	$values = $form_state['values'];
+	dpm($values);
+	$pickem = $form_state['pickem'];
+	if ($values['op'] == 'Join') {
+		PickemManager::addUserToPickem($user, $pickem);
+		drupal_set_message(t('You have been added to :pickem', array(':pickem' => $pickem->title)));
+		
+		$role = user_role_load_by_name(sprintf('%s player', $pickem->name));
+		dpm(array($role, sprintf('%s player', $pickem->name)));
+		user_multiple_role_edit(array($user->uid), 'add_role', $role->rid);
+		
+		// save any field data specific to this user (player)
+		$edit = (array) $user;
+		$field_key = sprintf('%s_user_default_pick', $pickem->name);
+		$edit[$field_key]['und'][0]['value'] = $values[$field_key]['und'][0]['value'];
+		user_save($user, $edit);
+		
+		//$form_state['redirect'] = 'pickem/' . $pickem->name . '/slate';
+	}
 }
 
 function pickem_picks($week = NULL) {
@@ -671,32 +944,101 @@ function pickem_ajax_slate_remove($gid) {
 	ajax_deliver($page);
 }
 
-function pickem_permission() {
-	return array(
-		'administer pickem settings' => array(
-			'title' => t('Administer Pickem Setttings'),
-			'description' => t('Perform administration tasks on Pickem settings'),
-		),
-		'administer pickem games' => array(
-			'title' => t('Administer Pickem Games'),
-			'description' => t('Perform administration tasks on Pickem games'),
-		),
-		'pickem player' => array(
-			'title' => t('Make picks in the pickem contest'),
-			'description' => t('Can play the pickem content(s)'),
-		),
-	);
-}
-
 function pickem_pick_school_name(&$form, &$form_state) {
+	global $user;
 	// get the object ID for this row
-	$objid = $form_state['clicked_button']['#objid'];
+	$pickem = $form_state['pickem'];
 	
 	// target school
 	$target_school_name = $form_state['clicked_button']['#school_name'];
+	$pkid = $form_state['clicked_button']['#pkid'];
+	$objid = $form_state['clicked_button']['#objid'];
+	$objtype = $form_state['clicked_button']['#objtype'];
+	$school_name = $form_state['clicked_button']['#school_name'];
 	
-	// TODO save the pick choice
-	// TODO in the session
+	// CACHE DATA
+	$cache_key = sprintf('picks.%s', $user->uid);
+	$cache_picks = array();
+	if ($cache = cache_get($cache_key)) {
+		$cache_picks = $cache->data;
+	}
+
+	if (isset($cache_picks)) {
+		if ($pkid == 'new') {
+			if (isset($cache_picks['new'][$objid])) {
+				if ($cache_picks['new'][$objid]->pick_school_name == $target_school_name) {
+					// uncheck or clear the pick if it's the one already selected
+					unset($cache_picks['new'][$objid]);
+					
+					// clear the target school so the button state will reset.
+					$target_school_name = NULL;
+				}
+				else {
+					$cache_picks[$pkid][$objid]->pick_school_name = $school_name;
+				}
+			}
+			else {
+				// this is to handle the "NEW" picks that 
+				// never were in the database
+				//
+				// create an array of new picks, one for each event (game, series or tourney)
+				$o = new stdClass();
+				$o->pick_school_name = $school_name;
+				$o->objtype = $objtype;
+				$o->objid = $objid;
+				$o->week = $form_state['week'];
+				$o->season = $pickem->season;
+				$o->correct = NULL;
+				$cache_picks['new'][$objid] = new Pick($o);
+			}
+		}
+		else {
+			// change for a pick previously saved to database
+			if (isset($cache_picks[$pkid]) && $cache_picks[$pkid] == $target_school_name) {
+				// clear it.
+				$cache_picks[$pkid] = '';
+			}
+			else {
+				$cache_picks[$pkid] = $target_school_name;
+			}
+		}
+		watchdog('pickem', print_r($cache_picks, TRUE));
+		cache_set($cache_key, $cache_picks, 'cache');
+	}
+	
+	/*	
+	if ($pkid == 'new') {
+		if (isset($_SESSION['picks'][$user->uid]['new'][$objid])) {
+			if ($_SESSION['picks'][$user->uid]['new'][$objid]->pick_school_name == $target_school_name) {
+				// uncheck or clear the pick if it's the one already selected
+				unset($_SESSION['picks'][$user->uid]['new'][$objid]);
+				
+				// clear the target school so the button state will reset.
+				$target_school_name = NULL;
+			}
+			else {
+				$_SESSION['picks'][$user->uid][$pkid][$objid]->pick_school_name = $school_name;
+			}
+		}
+		else {
+			// this is to handle the "NEW" picks that 
+			// never were in the database
+			//
+			// create an array of new picks, one for each event (game, series or tourney)
+			$o = new stdClass();
+			$o->pick_school_name = $school_name;
+			$o->objtype = $objtype;
+			$o->objid = $objid;
+			$o->week = $form_state['week'];
+			$o->season = $pickem->season;
+			$o->correct = NULL;
+			$_SESSION['picks'][$user->uid]['new'][$objid] = $o;
+		}
+	}
+	else {
+		$_SESSION['picks'][$user->uid][$pkid]->pick_school_name = $school_name;
+	}
+	*/
 		
 	foreach(element_children($form['events'][$objid]['slate_event']['pick_school_name']) as $sname) {
 		$form['events'][$objid]['slate_event']['pick_school_name'][$sname]['#attributes']['class'] = array('btn', 'btn-sm', 'btn-block');

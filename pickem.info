@@ -7,4 +7,6 @@ files[] = pickem.model.google.inc
 files[] = pickem.model.standings.inc
 files[] = pickem.school.inc
 
+dependencies[] = entity
+
 scripts[] = js/init.js

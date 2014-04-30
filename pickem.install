@@ -14,23 +14,28 @@ $pickem = NULL;
 function pickem_install() {
 	global $pickem;
 	
-	variable_set('pickem.default_conference', 'acc');
-
-	variable_set('pickem.protected_schools', array('louisville','notredame'));
-	variable_set('pickem.current_season', 2013);
-	variable_set('pickem.season_start', serialize($season_start));
+	#variable_set('pickem.default_conference', 'acc');
+	#variable_set('pickem.protected_schools', array('louisville','notredame'));
+	#variable_set('pickem.current_season', 2013);
+	#variable_set('pickem.season_start', serialize($season_start));
+	
 	variable_set('pickem.newpickem', PickemManager::newPickem());
+	
+	#_pickem_install_weeks_data();
+	_pickem_load_pickems();
+	_pickem_load_weeks();
+	_pickem_load_conferences();
 
 	# temporarily store the schools as they are added to the database
 	# as we'll need to access data when adding games
 	$tmp_school = array();
-	
-	#_pickem_install_weeks_data();
-	_pickem_load_pickems();
-	_pickem_load_conferences();
 	_pickem_load_schools();
 	_pickem_install_initial_games();
-
+	
+	drush_print('adding fields...');
+	include_once(drupal_get_path('module', 'pickem') . '/pickem.fields.inc');
+	
+	pickem_install_fields();
 }
 
 /**
@@ -38,12 +43,17 @@ function pickem_install() {
  */
 function pickem_uninstall() {
 	variable_del('pickem.newpickem');
-	cache_clear_all('pickem.pickem*', 'cache', TRUE);
+	cache_clear_all('pickem*', 'cache', TRUE);
 	$dbres = db_select('pickem', 'p')->fields('p')->execute();
 	foreach ($dbres as $p) {
+		if ($p->active == '1') {
+			$key = sprintf('%s_user_default_pick', $p->name);
+			field_delete_field($key);
+		}
 		user_role_delete(sprintf('%s player', $p->name));
 		user_role_delete(sprintf('%s manager', $p->name));
 	}
+	field_purge_batch(1000);
 }
 
 function _pickem_load_pickems() {
@@ -68,6 +78,28 @@ function _pickem_load_pickems() {
 			user_role_save($role);
 		}
 	}	
+}
+
+function _pickem_load_weeks() {
+	global $tmp_school;
+
+	#$file = drupal_get_path('module', 'pickem') . '/data/schools.tsv';
+	$weeks = GoogleSpreadsheetManager::fetchWeeksSpreadsheetEntries();
+	foreach ($weeks as $s) {
+		#drush_print_r($s);
+		$o = new stdClass();
+		$o->pickem_name = $s['gsx$pickem']['$t'];
+		$o->week = $s['gsx$week']['$t'];
+		$o->title = $s['gsx$weektitle']['$t'];
+		$startdate = new DateTime($s['gsx$start']['$t']);
+		$o->start = $startdate->getTimestamp();
+		$startdate->add(new DateInterval('P7D'));
+		$o->end = $startdate->getTimestamp();
+
+		if (drupal_write_record('week', $o) !== FALSE) {
+			drush_print(sprintf('added week %s (%s) to the Week table', $o->week, $o->pickem_name));
+		}
+	}
 }
 
 function _pickem_load_schools() {
@@ -120,61 +152,6 @@ function _pickem_load_conferences() {
 	}
 }
 
-function _pickem_install_weeks_data() {
-	$d = new DateTime('8/31/2013');
-	$startDate = $d->getTimestamp();
-	
-	for ($i = 0; $i < 15; $i++) {
-		$o = new stdClass();
-		$o->week = $i + 1;
-		$o->start = $startDate;
-		$o->end = $startDate + (86400 * 7) - 1;
-		$o->title = sprintf('Week %d', ($i + 1));
-		$o->season = '2013';
-		drupal_write_record('week', $o);
-		$startDate = $startDate + (86400 * 7);
-	}
-	
-	$d1 = new DateTime('12/21/2013 2:00 PM');
-	$d2 = new DateTime('1/5/2014 9:00 PM');
-	$o = new stdClass();
-	$o->start = $d1->getTimestamp();
-	$o->end = $d2->getTimestamp();
-	$o->title = t('Bowls Games');
-	$o->week = 16;
-	$o->season = '2013';
-	drupal_write_record('week', $o);
-	
-	
-	$d1 = new DateTime('1/6/2014 8:30 PM');
-	$d2 = new DateTime('1/6/2014 11:59 PM');
-	$o = new stdClass();
-	$o->start = $d1->getTimestamp();
-	$o->end = $d2->getTimestamp();
-	$o->title = t('BCS National Championship Game');
-	$o->week = 17;
-	$o->season = '2013';
-	drupal_write_record('week', $o);
-}
-
-function _pickem_update_weeks_data() {
-	$d = new DateTime('8/27/2013');
-	$startDate = $d->getTimestamp();
-	$n = 0;
-	
-	for ($i = 0; $i < 15; $i++) {
-		$n += db_update('week')->fields(array(
-			'start' => $startDate,
-			'end' => $startDate + (86400 * 7) - 1,
-		))
-		->condition('week', $i + 1)
-		->condition('season', '2013')
-		->execute();
-
-		$startDate = $startDate + (86400 * 7);
-	}
-}
-
 function _pickem_install_initial_games() {
 	global $tmp_school;
 	global $pickem;
@@ -188,6 +165,9 @@ function _pickem_install_initial_games() {
 	$gameEntries = GoogleSpreadsheetManager::fetchGamesSpreadsheetEntries();
 	foreach ($gameEntries as $conf => $confList) {
 		foreach ($confList as $g) {
+			$entity_type = 'sportingevent';
+			$entity = entity_create($entity_type, array('type' => 'sportingevent_game'));
+			
 			$o = new stdClass();
 			$o->season = $g['gsx$season']['$t'];
 			$date = new DateTime($g['gsx$date']['$t']);
@@ -247,57 +227,6 @@ function _pickem_install_initial_games() {
 			}
 		}
 	}
-
-	/*
-	$file = drupal_get_path('module', 'pickem') . '/data/' . $fname;
-	if (($handle = fopen($file, 'r')) !== FALSE) {
-		while (($data = fgetcsv($handle, 90, "\t"))) {
-			$o = new stdClass();
-			$o->season = $data[0];
-			$o->week = $data[1];
-			$o->visiting_school_name = $data[2];
-			$o->host_school_name = $data[3];
-			$o->sport = 'ncaaf';
-			
-			$date = new DateTime($data[4]);
-			$o->game_date = $date->getTimestamp();
-			
-			$o->location = $data[5];
-			$o->host_conf_name = $tmp_school[$data[3]]->conf_name;
-			$o->visiting_conf_name = $tmp_school[$data[2]]->conf_name;
-			$o->neutral = $data[6] == 'neutral' ? 'Y' : 'N';
-			$o->location = $data[5];
-			if (isset($data[7])) {
-				# game title
-				$o->title = $data[7];
-			}
-			drupal_write_record('game', $o);
-			
-			// if the game includes schools from the 'default conference'
-			// automatically add them to the slate of games
-			$default_conf = variable_get('pickem.default_conference','');
-			$tmp_array = array($tmp_school[$data[2]]->conf_name, $tmp_school[$data[3]]->conf_name);
-			$protected_schools = variable_get('pickem.protected_schools', array());
-			
-			$addToSlate = in_array($default_conf, $tmp_array) || 
-				(in_array($data[2], $protected_schools) ||
-				 in_array($data[3], $protected_schools)) ||
-				$data[8] == 'slate';
-			
-			//if (($tmp_school[$data[2]]->conf_name == $default_conf ||
-			//		$tmp_school[$data[3]]->conf_name == $default_conf) || (isset($data[8]) && $data[8] == 'slate')) {
-			if ($addToSlate) {	
-				$s = new stdClass();
-				$s->slate_id = $o->week;
-				$s->gid = $o->gid;
-				$s->season = $o->season;
-				$s->pid = $pickem->pid;
-				drupal_write_record('slate', $s);
-			}
-		}
-	}
-	fclose($handle);
-	*/
 }
 
 /**
@@ -346,7 +275,7 @@ function pickem_schema() {
 				'title' => array('type' => 'varchar','length' => 128,'not null' => TRUE,'default' => '',),
 				'description' => array('type' => 'varchar', 'length' => 255,),
 				'desc_format' => array('type' => 'varchar', 'length' => '15',),
-				'name' => array('type' => 'varchar','length' => 60,'not null' => TRUE,'default' => '',),
+				'name' => array('type' => 'varchar','length' => 25,'not null' => TRUE,'default' => '',),
 				'season' => array('type' => 'int','unsigned' => TRUE,'not null' => TRUE,'default' => 0,),
 				'sport' => array('type' => 'varchar','length' => 12,'not null'=>TRUE,'default' =>''),
 				'active' => array('type' => 'int','size' => 'tiny','not null' => TRUE,'default' => 1,),
@@ -394,6 +323,7 @@ function pickem_schema() {
 				'week' => array('type' => 'int','size' => 'tiny','unsigned' => TRUE,'not null' => TRUE,'default' => 0,),
 				'season' => array('type' => 'int','unsigned' => TRUE,'not null' => TRUE,'default' => 0,),
 				'pickem_id' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0,),
+				'comment' => array('type' => 'text', 'size' => 'normal'),
 			),
 			'primary key' => array('pkid'),
 			'foreign keys' => array(
@@ -466,36 +396,13 @@ function pickem_schema() {
 		),
 		'week' => array(
 			'fields' => array(
-				'week' => array(
-					'type' => 'int',
-					'size' => 'tiny',
-					'unsigned' => TRUE,
-					'not null' => TRUE,
-					'default' => 0,
-				),
-				'title' => array(
-					'type' => 'varchar',
-					'length' => 35,
-				),
-				'season' => array(
-					'type' => 'int',
-					'unsigned' => TRUE,
-					'not null' => TRUE,
-					'default' => 0,
-				),
-				'start' => array(
-					'type' => 'int',
-					'not null' => TRUE,
-					'default' => 0,
-				),
-				'end' => array(
-					'type' => 'int',
-					'not null' => TRUE,
-					'default' => 0,	
-				),
-				'pickem_id' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0,),
+				'week' => array('type' => 'int','size' => 'tiny','unsigned' => TRUE,'not null' => TRUE,'default' => 0,),
+				'title' => array('type' => 'varchar','length' => 35,),
+				'start' => array('type' => 'int','not null' => TRUE,'default' => 0,),
+				'end' => array('type' => 'int','not null' => TRUE,'default' => 0,),
+				'pickem_name' => array('type' => 'varchar','length' => 25,'not null' => TRUE,'default' => '',),
 			),
-			'primary key' => array('season', 'week', 'pickem_id'),
+			'primary key' => array('week', 'pickem_name'),
 		),
 		'tourney' => array(
 			'fields' => array(
@@ -558,6 +465,7 @@ function pickem_schema() {
 				'overtimes' => array('type' => 'int','unsigned' => TRUE,'size' => 'tiny',),
 				'stats_processed' => array('type' => 'int', 'default' => 0,),
 				'tv' => array('type' => 'varchar', 'length' => 20,),
+				'game_type' => array('type' => 'varchar', 'length' => 25, 'default' => 'game'),
 			),
 			'indexes' => array(
 				'host_school' => array(array('host_school_name', 5)),
@@ -668,6 +576,7 @@ function pickem_schema() {
 				'games_picked' => array('type' => 'int','default' => 0,),
 				'weeks_won' => array('type' => 'int', 'default' => 0,),
 				'pickem_id' => array('type' => 'int', 'not null' => TRUE, 'default' => 0,),
+				'pickem_options' => array('type' => 'blob', 'size'=>'normal'),
 			),
 			'primary key' => array('uid', 'pickem_id'),
 		),

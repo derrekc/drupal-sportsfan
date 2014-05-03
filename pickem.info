@@ -6,6 +6,8 @@ files[] = pickem.model.picks.inc
 files[] = pickem.model.google.inc
 files[] = pickem.model.standings.inc
 files[] = pickem.school.inc
+files[] = pickem.entity.inc
+files[] = pickem.test
 
 dependencies[] = entity
 

@@ -16,6 +16,16 @@ function pickem_drush_command() {
 			'conf' => 'The (machine) name of the conference',
 		),
 	);
+  $items['import-pickems'] = array(
+    'callback' => 'pickem_import_pickem_google_data',
+    'description' => dt('Import Pickems from Google Spreadsheet.'),
+		'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
+  );
+  $items['import-games'] = array(
+    'callback' => 'pickem_import_games_google_data',
+    'description' => dt('Import Pickems from Google Spreadsheet.'),
+		'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
+  );
 	$items['refresh-schools'] = array(
 		'description' => 'Load unprocessed schools from "schools.tsv"',
 		'aliases' => array('schools'),
@@ -73,6 +83,230 @@ function pickem_drush_command() {
 		'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
 	);
 	return $items;
+}
+
+/**
+ * Drush callback.
+ */
+function pickem_import_pickem_google_data() {
+	$worksheets = GoogleSpreadsheetManager::worksheets(GoogleSpreadsheetManager::PICKEM_SPREADSHEET_KEY);
+	
+	$prompt = array();
+	foreach ($worksheets as $k => $w) {
+		$prompt[] = $w['label'];
+	}
+	if (count($worksheets) > 1) {
+		$prompt[] = dt('All');
+	}
+	$option = drush_choice($prompt, 'Select datasource');
+	if ($option === FALSE) {
+		return;
+	}
+
+	if ($option < (count($worksheets) + 1)) {
+		$worksheets = (array) array_slice($worksheets, $option-1, 1);
+	}
+
+	foreach ($worksheets as $ws) {
+		try {
+			drush_print(sprintf('Reading from "%s"', $ws['href']));
+			$pickems = GoogleSpreadsheetManager::spreadsheetEntries($ws['href']);
+			foreach ($pickems as $p) {
+				$entity_type = 'pickem';
+				$bundle = $p['gsx$bundle']['$t']; 
+				$entity = entity_create($entity_type, array('type' => $bundle));
+				$entity->pickem_type = $bundle;
+				
+				$keys = array('title','name','season','sport','active','autoconference',
+					'autoschool','description','weeks','startdate','joindeadline','firstdayofweek',
+					'pickformat','picksperweek',);
+				foreach($keys as $key) {
+					$entity->{$key} = $p['gsx$'.$key]['$t'];
+				}
+				if ($entity->save() !== FALSE) {
+					drush_log(sprintf('Added "%s" to Pickem database', $entity->title), 'ok');
+					
+					if ($entity->active == 1) {
+						// create an instance
+						$instances = array(
+							array(
+								'entity_type' => 'pickem',
+								'bundle' => $bundle,
+								'field_name' => 'pick_default',
+								'label' => t('Default Choice for Picks'),
+								'description' => t('This will be the default selection for each game when making picks.'),
+								'type' => 'list_text',
+								'widget' => array(
+									'type' => 'options_select',
+									'settings' => array(
+										'allowed_values' => array(
+											'hometeam' => t('Home Team'),
+											'visitingteam' => t('Visiting Team'),
+											'topranked' => t('Team with Highest Ranking'),
+										),
+									),
+								),
+							),
+							array(
+								'entity_type' => 'pickem',
+								'bundle' => $bundle,
+								'field_name' => 'max_bye_weeks_allowed',
+								'label' => t('Maximum number of bye weeks allowed'),
+								'description' => t('Number of bye weeks allowed in this pickem'),
+								'type' => 'number_integer',
+								'settings' => array(
+									'min' => 0,
+								)
+							)
+						);
+						foreach ($instances as $i) {
+							try {
+								field_create_instance($i);
+							} catch (Exception $e) {
+								drush_log($e->getMessage(), 'error');
+							}
+						}
+					}
+				}
+			}
+		} catch(Exception $e) {
+			drush_log('Can\'t save pickems to the database', 'error');
+		}
+	}
+  drush_log('Import complete', 'success');
+}
+
+/**
+ * Drush callback.
+ */
+function pickem_import_games_google_data() {
+	if (!module_exists('team')) {
+		drush_log('Please enable the Team module before importing games', 'error');
+		return;
+	}
+	
+	$pickems = pickem_load_multiple(FALSE);
+	$pickem_options = array();
+	$options = array();
+	foreach ($pickems as $p) {
+		$options[] = $p->title;
+		$pickem_options[] = $p;
+	}
+
+	$option = drush_choice($options, dt('Select a pickem'));
+	if ($option === FALSE) {
+		return;
+	}
+	$pickem = $pickem_options[$option];
+
+	// process the desired worksheet(s)
+	$worksheets = GoogleSpreadsheetManager::worksheets(GoogleSpreadsheetManager::GAMES_SPREADSHEET_KEY);	
+	$options = array();
+	foreach ($worksheets as $k => $w) {
+		$options[] = $w['label'];
+	}
+	if (count($worksheets) > 1) {
+		$options[] = dt('All');
+	}
+	$option = drush_choice($options, dt('Select a worksheet'));
+	if ($option === FALSE) {
+		return;
+	}
+	drush_print('option = ' . $option);
+	if ($option < (count($worksheets))) {
+		$worksheets = (array) array_slice($worksheets, $option, 1);
+	}
+
+	foreach ($worksheets as $ws) {
+		try {
+			drush_print(sprintf('Reading "%s" from "%s"', $ws['label'], $ws['href']));
+			$games = GoogleSpreadsheetManager::spreadsheetEntries($ws['href']);
+			foreach ($games as $g) {
+				$game_entity = game_load_by_opponents($g['gsx$host']['$t'], $g['gsx$visitor']['$t'], array('season' => $g['gsx$season']['$t']));
+				if (!empty($game_entity)) {
+					continue;
+				}
+				$entity_type = 'game';
+				$bundle = isset($g['gsx$bundle']['$t']) ? $g['gsx$bundle']['$t'] : 'college-game';
+				$bundle = 'college-game';
+				$game_entity = '';
+				$game_entity = entity_create($entity_type, array('type' => $bundle));	
+				$game_entity->game_type = $bundle;
+				
+				$game_entity->season = $g['gsx$season']['$t'];
+				$date = new DateTime($g['gsx$date']['$t']);
+				$game_entity->game_date = $date->getTimestamp();
+				$game_entity->week = $g['gsx$week']['$t'];
+				$game_entity->visiting_school_name = $g['gsx$visitor']['$t'];
+				$game_entity->host_school_name = $g['gsx$host']['$t'];
+				
+				// TODO get conf_name for school
+				try {
+					$host_team = team_load_by_name($game_entity->host_school_name);
+					$game_entity->host_conf_name = $host_team->conf_name;
+				} catch (Exception $e) {
+					drush_log($e->getMessage(), 'error');
+				}
+				try {
+					$visiting_team = team_load_by_name($game_entity->visiting_school_name);
+					$game_entity->visiting_conf_name = $visiting_team->conf_name;
+				} catch (Exception $e) {
+					drush_log($e->getMessage(), 'error');
+				}	
+				
+				$game_entity->sport = $g['gsx$sport']['$t'];
+				$game_entity->tv = $g['gsx$tv']['$t'];
+				$game_entity->neutral = $g['gsx$neutral']['$t'] == 'TRUE' ? 'Y' : 'N';
+				$game_entity->location = $g['gsx$location']['$t'];
+				
+				if ($game_entity->save() !== FALSE) {
+					drush_log(sprintf('Added "%s" to Pickem database', $game_entity->getDisplayTitle()), 'ok');
+
+					if ($pickem->sport != $game_entity->sport) {
+						continue;
+					}
+
+					$addToSlate = FALSE;
+					$patt = sprintf('/%s/', strtolower($ws['label']));
+					if (preg_match($patt, $pickem->autoconference) == 1) {
+						// add game to slate
+						$addToSlate = TRUE;
+					}
+					else {
+						$patt_a = sprintf('/%s/', $game_entity->visiting_conf_name);
+						$patt_b = sprintf('/%s/', $game_entity->host_conf_name);
+						if ((preg_match($patt_a, $pickem->autoconference) == 1) || (preg_match($patt_b, $pickem->autoconference) == 1)) {
+							// add game to slate
+							$addToSlate = TRUE;
+						}
+						else {
+							$patt_a = sprintf('/%s/', $game_entity->visiting_school_name);
+							$patt_b = sprintf('/%s/', $game_entity->host_school_name);
+							if ((preg_match($patt_a, $pickem->autoschool) == 1) || (preg_match($patt_b, $pickem->autoschool) == 1)) {
+								// add game to slate
+								$addToSlate = TRUE;
+							}
+						}
+					}
+					if ($addToSlate) {						
+						$pickem_slate = entity_create('pickem_slate', array('type' => 'pickem_slate'));
+						$pickem_slate->pid = $pickem->pid;
+						$pickem_slate->event_entity_id = $game_entity->gid;
+						$pickem_slate->event_entity_type = 'game';
+						$pickem_slate->season = $game_entity->season;
+						$pickem_slate->week = $game_entity->week;
+						$pickem_slate->slate_date = $game_entity->game_date;
+						if ($pickem_slate->save()) {
+							drush_log(sprintf('---- added to Pickem Slate for "%s"', $pickem->title), 'ok');
+						}
+					}
+				}
+			}
+		} catch(Exception $e) {
+			drush_log('Can\'t save games to the database', 'error');
+		}
+	}
+  drush_log('Import complete', 'success');
 }
 
 function drush_pickem_create_standings($target_week) {

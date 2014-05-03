@@ -1,0 +1,62 @@
+<?php
+
+/**
+ * @file
+ * Test for pickem module
+ *
+ * Verify pickem module functionality
+ */
+
+/**
+ * @ingroup pickem
+ */
+class PickemTestCase extends DrupalWebTestCase {
+	protected $profile = 'testing';
+
+	public static function getInfo() {
+		return array(
+			'name' => 'Pickem example',
+			'description' => 'Basic Pickem tests',
+			'group' => 'Pickem',
+		);
+	}
+
+	function setUp() {
+		// enable the module
+		parent::setUp('pickem');
+
+		$permissions = array(
+			'access content',
+			'administer pickem entities',
+			'administer game entities',
+		);
+		$account = $this->drupalCreateUser($permissions);
+		$this->drupalLogin($account);
+		
+		// Attach a field
+		$field = array(
+			'field_name' => 'pickem_sport_list',
+			'type' => 'list_text',
+			'settings' => array(
+				'allowed_values' => array(
+					'ncaaf' => t('College Football'),
+					'ncaam' => t('Men\'s College Basketball'),
+					'ncaab' => t('College Baseball'),
+				),
+			),
+		);
+		field_create_field($field);
+		$instance = array(
+			'label' => 'Sport',
+			'field_name' => 'pickem_sport_list',
+			'entity' => 'pickem',
+			'bundle' => 'pickem',
+		);
+		field_create_instance($field);
+	}		
+
+	function testPickem() {
+		$test = 'hi';
+		echo $test;
+	}
+}	

@@ -26,6 +26,7 @@ class PickemEventModel {
 	
 }
 
+/*
 class Pickem {
 	public function __construct($dbobj) {
 		foreach (get_object_vars($dbobj) as $oKey => $oVal) {
@@ -41,6 +42,7 @@ class Pickem {
 		return in_array($this->active, array(1, 'Y', 'y'));
 	}
 }
+*/
 
 class PickemManager {
 	
@@ -213,9 +215,9 @@ class PickManager {
 	}
 }
 
-class Slate {
-
-}
+#class Slate {
+#
+#}
 
 class SlateEvent {
 	private $_sportEvent = NULL;
@@ -308,75 +310,6 @@ class SlateManager {
 
 	public static function slateForDate($date) {
 
-	}
-}
-
-class Game extends PickemEventModel {
-	public function __construct($dbobj) {
-		foreach (get_object_vars($dbobj) as $oKey => $oVal) {
-			$this->{$oKey} = $oVal;
-		}
-	}
-
-	public function displayTitle() {
-		if (!empty($this->title)) {
-			return $this->title;
-		}
-		return sprintf('%s %s %s',
-			$this->visiting_school,
-			$this->neutral == 'Y' ? 'vs.' : 'at',
-			$this->host_school
-			);
-	}
-
-	public function displayTitleMobile() {
-		if (!empty($this->title)) {
-			return $this->title;
-		}
-		return sprintf('%s %s<br />%s',
-			$this->visiting_school,
-			$this->neutral == 'Y' ? 'vs.' : 'at',
-			$this->host_school
-			);
-	}
-	
-	public function vs_at_label() {
-		return $this->neutral == 'Y' ? 'vs.' : 'at';
-	}
-	
-	public function eventDate($type='medium') {
-		return $this->gameDate($type);
-	}
-	
-	public function gameDate($type='medium') {
-		return format_date($this->game_date, $type);
-	}
-
-	public function opponentsForSelectElement() {
-		$options = array();
-		if (!empty($this->visiting_school_name)) {
-			$options[$this->visiting_school_name] = $this->visiting_school;
-		}
-		if (!empty($this->host_school_name)) {
-			$options[$this->host_school_name] = $this->host_school;
-		}
-		return $options;
-	}
-	
-	public function opponents() {
-		$opponents = array();
-		
-		$o = new stdClass();
-		$o->name = $this->visiting_school_name;
-		$o->displaytitle = $this->visiting_school;
-		$opponents[] = $o;
-		
-		$o = new stdClass();
-		$o->name = $this->host_school_name;
-		$o->displaytitle = $this->host_school;
-		$opponents[] = $o;
-		
-		return $opponents;
 	}
 }
 

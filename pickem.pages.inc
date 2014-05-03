@@ -60,18 +60,25 @@ function pickem_pickem_overview($pname) {
  */
 function pickem_pickem_slate_form($form, &$form_state, $pname, $week = NULL) {
 	global $user;
-	$pickem = PickemManager::loadPickem($pname);
+	
+	$pickem = pickem_load_by_name($pname);
+	$pickem_wrapper = entity_metadata_wrapper('pickem', $pickem);
+	
 	$form['#parents'] = array();
 	$form['#attached']['js'][] = drupal_get_path('module', 'pickem') . '/js/pickem-slate.js';
 	$js_settings = array('week' => $week, 'pickem_id' => $pickem->pid, 'uid' => $user->uid);
 	
 	// Send the user back to the front page if this pickem is either invalid or inactive
-	if (is_null($pickem) || (!$pickem->active() && !in_array('administrator', $user->roles))) {
+	if (!$pickem || (!$pickem->active() && !in_array('administrator', $user->roles))) {
 		drupal_set_message('You have reached an inactive or invalid Pick\'em Contest', 'error');
 		drupal_goto('<front>');
 	}
 	
-	$pickem_player = PickemManager::loadPickemPlayer($user->uid, $pickem->pid);
+	$pickem_player = user_load($user->uid, TRUE);
+	$player_wrapper = entity_metadata_wrapper('user', $pickem_player);
+	
+	dpm(array('pname' => $pname, 'pickem' => $pickem, 'player' => $pickem_player));
+	
 	if (is_null($pickem_player)) {
 		// prompt the player to enter settings.
 		drupal_goto(sprintf('pickem/%s/player-setup', $pickem->name));
@@ -88,7 +95,8 @@ function pickem_pickem_slate_form($form, &$form_state, $pname, $week = NULL) {
 		$cache_picks = $cache->data;
 	}
 	
-	$upcomingSlate = SlateManager::slateForWeek($pickem->pid, 1, $pickem->season);
+	$upcomingSlate = $pickem->pickem_slate;
+	#$upcomingSlate = SlateManager::slateForWeek($pickem->pid, 1, $pickem->season);
 	if (count($upcomingSlate) == 0) {
 		$form['no-slate-events'] = array(
 			'#type' => 'markup',
@@ -107,11 +115,12 @@ function pickem_pickem_slate_form($form, &$form_state, $pname, $week = NULL) {
 		*/
 	}		
 	
-	$field_key = sprintf('%s_user_default_pick', $pname);
+	$field_key = sprintf('%s_pick_default', $pname);
 	$field = field_info_field($field_key);
+	dpm(field_has_data($field));
 	if ($field) {
 		$instance = field_info_instance('user', $field_key, 'user');
-		$items = field_get_items('user', $user, $field_key);
+		$items = field_get_items('user', $user, $field_key, LANGUAGE_NONE);
 		dpm(array('instance' => $instance, 'items' => $items));
 	}
 	
@@ -127,10 +136,12 @@ function pickem_pickem_slate_form($form, &$form_state, $pname, $week = NULL) {
 	$form_state['pickem'] = $pickem;
 	$form['events']['#tree'] = TRUE;
 
-	foreach ($upcomingSlate as $event) {
-		$objid = $event->sportEventId();
-		$objtype = $event->sportEventType();
-		$pkid = $event->pickId();
+	foreach ($upcomingSlate as $slate_id => $event) {
+		// TODO convert 'pick' into an entity-based object, then..
+		$event->load_pick_for_user($pickem_player->uid);
+		$objid = $event->event_entity_id;
+		$objtype = $event->event_entity_type;
+		# $pkid = $event->pickId();
 		
 		$form['events'][$objid]['slate_event'] = array(
 			'#theme' => 'slate-' . $objtype,
@@ -154,6 +165,11 @@ function pickem_pickem_slate_form($form, &$form_state, $pname, $week = NULL) {
 			),
 		);
 		
+		// buttons for each opponent
+		/**
+		 * TODO based on any <pickem>_pick_default settings
+		 * select the appropriate school and update cache for user's pick
+		 */
 		foreach ($event->opponents() as $opponent) {
 			$form['events'][$objid]['slate_event']['pick_school_name'][$opponent->name] = array(
 				'#type' => 'button',

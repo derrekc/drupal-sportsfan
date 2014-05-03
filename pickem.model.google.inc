@@ -197,6 +197,37 @@ class GoogleSpreadsheetManager {
 		return $schoolEntries;
 	}
 	
+	public static function worksheets($spkey) {
+
+		// get data from google in this testing period
+		$feed_url = sprintf(self::WORKSHEET_URL_PIECE, 
+			self::FEEDURL_PREFIX,
+			$spkey,
+			self::QUERY_STRING
+			);
+			
+		$worksheet_content = json_decode(file_get_contents($feed_url, 0, self::googleFeedURLContext()), TRUE);
+		$worksheetEntries = $worksheet_content['feed']['entry'];
+		$worksheets = array();
+		foreach ($worksheetEntries as $key => $ws) {
+			$title = $ws['title']['$t'];
+			$listfeed_url = array_filter($ws['link'], function($var) {
+				$r = preg_match('/listfeed/', $var['rel']);
+				return $r == 1;
+			});
+			$url = reset($listfeed_url);
+			$worksheets[] = array('label' => $title, 'href' => str_replace('/basic', '/values', $url['href']) . self::QUERY_STRING);
+		}
+		
+		return $worksheets;
+	}
+
+	public static function spreadsheetEntries($url) {
+		$list_content = json_decode(file_get_contents($url, 0, self::googleFeedURLContext()), TRUE);
+		$entry = $list_content['feed']['entry'];
+		return $entry;
+	}
+	
 	/**
 	 * @return array (associative array, with 'conference' abbr names as keys)
 	 */

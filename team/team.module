@@ -1,0 +1,369 @@
+<?php
+
+// 50 items per page.
+define('TOTAL_ITEMS_PER_PAGE', 50);
+
+// Admin uri links.
+define('ADMIN_CONTENT_TEAMS_MANAGE_URI', 'admin/content/teams/manage/');
+define('ADMIN_CONTENT_TEAMS_URI', 'admin/content/teams');
+
+/**
+ * Implements hook_entity_info
+ */
+function team_entity_info() {
+	return array(
+		'team' => array(
+			'label' => t('Team'),
+			'label callback' => 'team_label_callback',
+			'plural label' => t('Teams'),
+			'entity class' => 'Team',
+			'controller class' => 'EntityAPIController',
+			'base table' => 'team',
+			'fieldable' => TRUE,
+			'entity keys' => array(
+				'id' => 'id'
+			),
+			'load hook' => 'team_load',
+			'admin ui' => array(
+				'path' => 'admin/content/teams',
+				'controller class' => 'TeamUIController',
+				'file' => 'includes/team.admin.inc',
+			),
+			'bundles' => array(
+				'team' => array(
+					'label' => 'Team',
+					'admin' => array(
+						'path' => 'admin/structure/team/manage',
+						'access arguments' => array('administer team entities'),
+					),
+				),
+				'college-team' => array(
+					'label' => 'College Team',
+					'admin' => array(
+						'path' => 'admin/structure/team/manage',
+						'access arguments' => array('administer team entities'),
+					),
+				),
+				'pro-team' => array(
+					'label' => 'Pro Team',
+					'admin' => array(
+						'path' => 'admin/structure/team/manage',
+						'access arguments' => array('administer team entities'),
+					),
+				),
+			),
+			'module' => 'team',
+			'access callback' => 'team_access_callback',
+			'static cache' => TRUE,
+			'uri callback' => 'entity_class_uri',
+		),
+	);
+	
+}
+
+/**
+ * Implements hook_menu().
+ */
+function team_menu() {
+  $items = array();
+
+  $items['team/%team'] = array(
+    'title' => 'Team',
+    'page callback' => 'team_view_entity',
+    'page arguments' => array(1),
+    'access callback' => 'team_access_menu_callback',
+    'access arguments' => array('view', 1),
+  );
+
+  $items['admin/content/team/bulk/delete/%'] = array(
+    'title' => 'Bulk Delete Teams',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('team_bulk_delete', 5),
+    'access arguments' => array('administer team entities'),
+    'file' => 'includes/team.admin.inc',
+  );
+
+  $items['admin/structure/team'] = array(
+    'title' => 'Team Fields',
+    'access arguments' => array('administer team entities'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function team_permission() {
+  return array(
+    'administer team entities' => array(
+      'title' => t('Administer Team Entities'),
+      'description' => t('Allows a user to administer team entities'),
+    ),
+    'view team entities' => array(
+      'title' => t('View Team Entity'),
+      'description' => t('Allows a user to view the team entities.'),
+    ),
+    'create team entities' => array(
+      'title' => t('Create Team Entities'),
+      'description' => t('Allows a user to create team entities.'),
+    ),
+    'edit team entities' => array(
+      'title' => t('Edit Team Entities'),
+      'description' => t('Allows a user to edit team entities.'),
+    ),
+    'delete team entities' => array(
+      'title' => t('Delete Team Entities'),
+      'description' => t('Allows a user to delete team entities.'),
+    ),
+    'use team bulk operations' => array(
+      'title' => t('Do bulk operations on Team entities'),
+      'description' => t('Allows a user to do bulk operations.'),
+    ),
+  );
+}
+/**
+ * Check access permission for Team Entity UI.
+ */
+function team_access_menu_callback($op, $team = NULL, $account = NULL) {
+  switch ($op) {
+    case 'view':
+      return user_access('view team entities', $account);
+
+    case 'create':
+      return user_access('create team entities', $account);
+
+    case 'update':
+      return user_access('edit team entities', $account);
+
+    case 'delete':
+      return user_access('delete team entities', $account);
+  }
+
+  return FALSE;
+}
+
+/**
+ * Team access callback.
+ */
+function team_access_callback() {
+
+  if (user_is_anonymous() || !user_access('administer team entities')) {
+    return FALSE;
+  }
+  else {
+    return TRUE;
+  }
+
+}
+
+/**
+ * Implements hook_theme().
+ */
+function team_theme() {
+  return array(
+    'team_full' => array(
+      'variables' => array('team' => NULL),
+      'file' => 'includes/team.theme.inc',
+    ),
+  );
+}
+
+/**
+ * Label callback for team entities
+ */
+function team_label_callback($team, $type) {
+	return empty($team->name) ? 'Untitled Team' : $team->displaytitle;	
+}
+
+/**
+ * Menu autoloader for /team.
+ */
+function team_load($team_id, $reset = FALSE) {
+  $team = team_load_multiple(array($team_id), array(), $reset);
+  return reset($team);
+}
+
+/**
+ * Load multiple team based on certain conditions.
+ */
+function team_load_multiple($team_ids = FALSE, $conditions = array('active' => 1), $reset = FALSE) {
+  return entity_load('team', $team_ids, $conditions, $reset);
+}
+
+/**
+ * Load team by name
+ */
+function team_load_by_name($tname) {
+	$teams = team_load_multiple(FALSE, array('name' => $tname));
+	return reset($teams);
+}
+/**
+ * Deletes a Team.
+ */
+function team_delete(Team $team) {
+  $team->delete();
+}
+
+/**
+ * Delete multiple team.
+ */
+function team_delete_multiple(array $team_ids) {
+  entity_get_controller('team')->delete($team_ids);
+}
+
+/**
+ * View for /lawmakers/<lawmakers_id> page.
+ */
+function team_view_entity($team) {
+  $fullname = $team->displaytitle ;
+  drupal_set_title($fullname);
+  // Path not entity.
+  $team_output = theme('team_full', array('team' => $team));
+  return $team_output;
+}
+
+/******** CLASS DEFINITIONS ********/
+
+/**
+ * Custom controller for the administrator UI
+ */
+class TeamUIController extends EntityDefaultUIController {
+	
+	/**
+	 * Override the menu hook for default ui controller
+	 */
+	public function hook_menu() {
+		$items = parent::hook_menu();
+		$items[$this->path]['title'] = t('Teams');
+		$items[$this->path]['description'] = t('Manage Teams, including fields');
+    $items[$this->path]['access callback'] = 'team_access_callback';
+    $items[$this->path]['access arguments'] = array('administer team entities');
+    $items[$this->path]['type'] = MENU_LOCAL_TASK;
+    return $items;
+	}
+
+  /**
+   * Admin form for searching and doing bulk operations.
+   */
+  public function overviewForm($form, &$form_state) {
+    $form['pager'] = array('#theme' => 'pager');
+
+    $header = array(
+      'id' => array('data' => t('Team ID'), 'field' => 'id'),
+      'title' => array('data' => t('Title'), 'field' => 'title'),
+      'operations' => array('data' => t('Operations'), 'field' => 'operations'),
+    );
+
+    $options = array();
+    $search_term = !empty($_GET['search']) ? $_GET['search'] : NULL;
+
+    $query = new EntityFieldQuery();
+    $query
+      ->entityCondition('entity_type', 'team');
+
+    if (!empty($search_term)) {
+      $query->propertyCondition('name', '%' . $search_term . '%', 'like');
+    }
+    // Check for sort order and sort key.
+    if (!empty($_GET['sort']) && !empty($_GET['order'])) {
+      $sort = strtoupper($_GET['sort']);
+      $order = strtolower($_GET['order']);
+      $order = str_replace(' ', '_', $order);
+      if ($order != 'operations') {
+        $query->propertyOrderBy($order, $sort);
+      }
+    }
+
+    $query->pager(TOTAL_ITEMS_PER_PAGE);
+
+    $result = $query->execute();
+    $team_results = !empty($result['team']) ? $result['team'] : array();
+    $team_array = !empty($team_results) ? team_load_multiple(array_keys($team_results)) : array();
+    foreach ($team_array as $team_id => $team) {
+      $options['team_id-' . $team_id] = array(
+        'id' => l($team->id, 'team/' . $team->id),
+        'title' => l($team->title, 'team/' . $team->id),
+        'operations' =>
+        l(t('View'), 'team/' . $team->id) . ' ' .
+        l(t('Edit'), ADMIN_CONTENT_TEAMS_MANAGE_URI . $team_id, array('query' => array('destination' => ADMIN_CONTENT_TEAMS_URI))) . ' ' .
+        l(t('Delete'), ADMIN_CONTENT_TEAMS_MANAGE_URI . $team_id . '/delete', array('attributes' => array('class' => array('team-delete-' . $team->id), ), 'query' => array('destination' => ADMIN_CONTENT_TEAMS_URI))),
+      );
+    }
+
+    $form['search'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Basic Search'),
+      '#collapsible' => TRUE,
+      '#collapsed' => !empty($search_term) ? FALSE : TRUE,
+    );
+
+    $form['search']['search_text'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Search Term'),
+      '#default_value' => !empty($search_term) ? $search_term : '',
+    );
+
+    $form['search']['search_submit'] = array(
+      '#type' => 'submit',
+      '#value' => t('Search'),
+    );
+
+    $form['bulk_operations'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Bulk Operations'),
+      '#collapsible' => TRUE,
+      '#collapsed' => TRUE,
+    );
+
+    $form['bulk_operations']['operations'] = array(
+      '#type' => 'select',
+      '#options' => array(
+        0 => t('Select a bulk operation'),
+        'delete' => t('Delete selected teams'),
+      ),
+    );
+
+    $form['bulk_operations']['submit'] = array(
+      '#type' => 'submit',
+      '#value' => t('Submit'),
+    );
+
+    $form['entities'] = array(
+      '#type' => 'tableselect',
+      '#header' => $header,
+      '#options' => $options,
+      '#attributes' => array('class' => array('entity-sort-table')),
+      '#empty' => t('There are no teams.'),
+    );
+
+    return $form;
+  }
+
+  /**
+   * Form Submit method.
+   */
+  public function overviewFormSubmit($form, &$form_state) {
+    $values = $form_state['input'];
+    $team_ids = array();
+
+    if (!empty($values['entities'])) {
+      foreach ($values['entities'] as $index => $value) {
+        if (!empty($value)) {
+          $team_ids[] = str_replace('team_id-', '', $value);
+        }
+      }
+
+      switch ($values['operations']) {
+        case 'delete':
+          drupal_goto('admin/content/team/bulk/delete/' . implode('|', $team_ids));
+          break;
+      }
+    }
+
+    if (!empty($values['search_text'])) {
+      drupal_goto('admin/content/team', array('query' => array('search' => $values['search_text'])));
+    }
+  }
+}

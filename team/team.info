@@ -1,0 +1,6 @@
+name = Sports Team
+description = Sports Team (collegiate, professional, etc)
+dependencies[] = entity
+dependencies[] = pickem
+files[] = team.entity.inc
+core = 7.x

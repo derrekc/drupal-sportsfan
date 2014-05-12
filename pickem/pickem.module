@@ -140,47 +140,39 @@ function pickem_entity_info() {
 			),
 			'module' => 'pickem',
 		),
-		'game' => array(
-			'label' => t('Game'),
-			'label callback' => 'game_label_callback',
-			'plural label' => t('Games'),
-			'entity class' => 'Game',
-			'controller class' => 'GameAPIController',
-			'base table' => 'game',
-			'fieldable' => FALSE,
+		'pick' => array(
+			'label' => t('Pick'),
+			'label callback' => 'entity_label',
+			'entity class' => 'Pick',
+			'plural label' => t('Picks'),
+			'controller class' => 'PickController',
+			'base table' => 'pick',
+			'load look' => 'pick_load',
+			'fieldable' => TRUE,
+			'uri callback' => 'pick_basic_uri',
 			'entity keys' => array(
-				'id' => 'gid',
-				'bundle' => 'game_type',
-			),
-			'load hook' => 'game_load',
-			#'admin ui' => array(
-			#	'path' => 'admin/content/game',
-			#	#'controller class' => 'TeamUIController',
-			#	'file' => 'includes/game.admin.inc',
-			#),
-			'bundles' => array(
-				'college-game' => array(
-					'label' => 'College Game',
-					'admin' => array(
-						'path' => 'admin/structure/pickem/college-game/manage',
-						'access arguments' => array('administer game entities'),
-					),
-				),
-				'pro-game' => array(
-					'label' => 'Pro Game',
-					'admin' => array(
-						'path' => 'admin/structure/pickem/pro-game/manage',
-						'access arguments' => array('administer game entities'),
-					),
-				),
+				'id' => 'pkid',
 			),
 			'module' => 'pickem',
-			'access callback' => 'game_access_callback',
-			'static cache' => TRUE,
-			'uri callback' => 'entity_class_uri',
+		),
+		'pickem_player' => array(
+			'label' => t('Pickem Player'),
+			'label callback' => 'entity_label',
+			'entity class' => 'PickemPlayer',
+			'plural label' => t('Pickem Player'),
+			'controller class' => 'PickemPlayerController',
+			'base table' => 'pickem_player',
+			'load look' => 'pickem_player_load',
+			'fieldable' => TRUE,
+			'uri callback' => 'pickem_player_basic_uri',
+			'entity keys' => array(
+				'id' => 'uid',
+			),
+			'module' => 'pickem',
 		),
 	);
 }
+
 /**
  * Team access callback.
  */
@@ -195,6 +187,15 @@ function pickem_access_callback() {
 
 }
 
+/**
+ * Implements hook_entity_load
+ */
+function pickem_entity_load(&$entities, $type) {
+	foreach ($entities as $entity) {
+		$entity->foo = 'bar';
+	}
+}
+  
 function pickem_theme($existing, $type, $theme, $path) {
 	return array(
 		'pickem_home' => array(
@@ -460,6 +461,7 @@ function pickem_permission() {
       'title' => t('Do bulk operations on Pickem entities'),
       'description' => t('Allows a user to do bulk operations.'),
     ),
+
 		'administer pickem settings' => array(
 			'title' => t('Administer Pickem Setttings'),
 			'description' => t('Perform administration tasks on Pickem settings'),
@@ -1294,14 +1296,6 @@ function pickem_label_callback($pickem, $type) {
 }
 
 /**
- * Label callback for team entities
- */
-function game_label_callback($game, $type) {
-	$title = $game->title();
-	return empty($title) ? 'Untitled Game' : $title;	
-}
-
-/**
  * Label callback for Slate entities
  */
 function pickem_slate_label_callback($slate, $type) {
@@ -1317,19 +1311,6 @@ function pickem_slate_basic_uri($pickem_slate) {
 	return array(
 		'path' => 'pickem/slate/' . $pickem_slate->slid,
 	);
-}
-
-/**
- * URI callback for Game
- */
-function game_basic_uri($game) {
-	return array(
-		'path' => sprintf('game/%s/%s/%s/%s', 
-			$game->sport, 
-			$game->season,
-			$game->visiting_school_name,
-			$game->host_school_name)
-		);
 }
 
 /// ------ CRUD CALLBACKS & FUNCTIONS ----------
@@ -1403,43 +1384,33 @@ function pickem_slate_delete_multiple(array $slate_ids) {
   entity_get_controller('pickem_slate')->delete($slate_ids);
 }
 
-// games
+// pick
 
 /**
  * Autoload callback
  */
-function game_load($game_id, $reset=FALSE) {
-  $game = game_load_multiple(array($game_id), array(), $reset);
-  return reset($game);
+function pick_load($pick_id, $reset=FALSE) {
+  $pick = pick_load_multiple(array($pick_id), array(), $reset);
+  return reset($pick);
 }
 
 /**
  * Load multiple games based on certain conditions.
  */
-function game_load_multiple($game_ids = FALSE, $conditions = array('active' => 1), $reset = FALSE) {
-  return entity_load('game', $game_ids, $conditions, $reset);
-}
-
-/**
- * Load game by opponents (and season)
- */
-function game_load_by_opponents($host_school_name, $visiting_school_name, $conditions = array()) {
-	$conditions['host_school_name'] = $host_school_name;
-	$conditions['visiting_school_name'] = $visiting_school_name;
-	$games = game_load_multiple(FALSE, $conditions, TRUE);
-	return reset($games);
+function pick_load_multiple($pick_ids = FALSE, $conditions = array('active' => 1), $reset = FALSE) {
+  return entity_load('pick', $pick_ids, $conditions, $reset);
 }
 
 /**
  * Deletes a Game.
  */
-function game_delete(Pickem $game) {
-  $game->delete();
+function pick_delete(Pick $pick) {
+  $pick->delete();
 }
 
 /**
  * Delete multiple games.
  */
-function game_delete_multiple(array $game_ids) {
-  entity_get_controller('game')->delete($game_ids);
+function pick_delete_multiple(array $pick_ids) {
+  entity_get_controller('pick')->delete($pick_ids);
 }

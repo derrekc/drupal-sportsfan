@@ -1,0 +1,181 @@
+<?php
+
+/**
+ * 
+ */
+function sportevents_menu() {
+	return array(
+		'admin/structure/college-game/manage' => array(
+			'title' => 'College Games',
+			'access arguments' => array('administer sportsevent entities'),
+		),
+		'admin/structure/pro-game/manage' => array(
+			'title' => 'College Games',
+			'access arguments' => array('administer sportsevent entities'),
+		),
+	);
+}
+
+/**
+ * Implementation of hook_entity_info
+ */
+function sportsevent_entity_info() {
+	return array(
+		'sportsevent' => array(
+			'label' => t('Sporting Event'),
+			'label callback' => 'sportsevent_label_callback',
+			'plural label' => t('Sporting Events'),
+			'entity class' => 'SportsEvent',
+			'controller class' => 'SportsEventAPIController',
+			'base table' => 'sportsevent',
+			'fieldable' => FALSE,
+			'entity keys' => array(
+				'id' => 'eid',
+				'bundle' => 'event_type',
+			),
+			'load hook' => 'sportsevent_load',
+			'admin ui' => array(
+				'path' => 'admin/content/sportsevent',
+				'controller class' => 'SportsEventUIController',
+				'file' => 'includes/sportsevent.admin.inc',
+			),
+			'bundles' => array(
+				'college-game' => array(
+					'label' => 'College Game',
+					'admin' => array(
+						'path' => 'admin/structure/college-game/manage',
+						'access arguments' => array('administer sports events entities'),
+					),
+				),
+				'pro-game' => array(
+					'label' => 'Pro Game',
+					'admin' => array(
+						'path' => 'admin/structure/pickem/pro-game/manage',
+						'access arguments' => array('administer sports events entities'),
+					),
+				),
+			),
+			'module' => 'sportsevent',
+			'access callback' => 'sportsevent_access_callback',
+			'static cache' => TRUE,
+			'uri callback' => 'entity_class_uri',
+		),
+	);
+}
+
+/**
+ * Sportsevent access callback.
+ */
+function sportsevent_access_callback() {
+
+  if (user_is_anonymous() || !user_access('administer sportsevent entities')) {
+    return FALSE;
+  }
+  else {
+    return TRUE;
+  }
+
+}
+
+/**
+ * Implementation of hook_theme
+ */
+function sportsevent_theme() {
+	return array(
+	);
+}
+
+/**
+ * Implementation of hook_permission
+ */
+function sportsevent_permission() {
+	return array(
+    // Sports Event permissions
+    'administer sportsevent entities' => array(
+      'title' => t('Administer SportsEvent Entities'),
+      'description' => t('Allows a user to administer sportsevent entities'),
+    ),
+    'view sportsevent entities' => array(
+      'title' => t('View SportsEvent Entity'),
+      'description' => t('Allows a user to view the sportsevent entities.'),
+    ),
+    'create sportsevent entities' => array(
+      'title' => t('Create SportsEvent Entities'),
+      'description' => t('Allows a user to create sportsevent entities.'),
+    ),
+    'edit sportsevent entities' => array(
+      'title' => t('Edit SportsEvent Entities'),
+      'description' => t('Allows a user to edit sportsevent entities.'),
+    ),
+    'delete sportsevent entities' => array(
+      'title' => t('Delete SportsEvent Entities'),
+      'description' => t('Allows a user to delete sportsevent entities.'),
+    ),
+    'use sportsevent bulk operations' => array(
+      'title' => t('Do bulk operations on sportsevent entities'),
+      'description' => t('Allows a user to do bulk operations.'),
+    ),
+	);	
+}
+
+/**
+ * URI callback for Game
+ */
+function sportsevent_basic_uri($sportsevent) {
+	return array(
+		'path' => sprintf('sportsevent/%s/%s/%s/%s', 
+			$sportsevent->sport, 
+			$sportsevent->season,
+			$sportsevent->visiting_team_name,
+			$sportsevent->host_team_name)
+		);
+}
+
+/**
+ * Label callback for sportsevent entities
+ */
+function sportsevent_label_callback($sportsevent, $type) {
+	$title = $sportsevent->title();
+	return empty($title) ? 'Untitled Sports Event' : $title;	
+}
+
+// games
+
+/**
+ * Autoload callback
+ */
+function sportsevent_load($sportsevent_id, $reset=FALSE) {
+  $sportsevent = sportsevent_load_multiple(array($sportsevent_id), array(), $reset);
+  return reset($sportsevent);
+}
+
+/**
+ * Load multiple games based on certain conditions.
+ */
+function sportsevent_load_multiple($sportsevent_ids = FALSE, $conditions = array('active' => 1), $reset = FALSE) {
+  return entity_load('sportsevent', $sportsevent_ids, $conditions, $reset);
+}
+
+/**
+ * Load game by opponents (and season)
+ */
+function sportsevent_load_by_opponents($host_team_name, $visiting_team_name, $conditions = array()) {
+	$conditions['host_team_name'] = $host_team_name;
+	$conditions['visiting_team_name'] = $visiting_team_name;
+	$games = sportsevent_load_multiple(FALSE, $conditions, TRUE);
+	return reset($games);
+}
+
+/**
+ * Deletes a Game.
+ */
+function sportsevent_delete(Game $game) {
+  $game->delete();
+}
+
+/**
+ * Delete multiple games.
+ */
+function sportsevent_delete_multiple(array $sportsevent_ids) {
+  entity_get_controller('game')->delete($sportsevent_ids);
+}

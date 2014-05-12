@@ -1,0 +1,18 @@
+name = Pickem 2013
+description = Pickem UI for 2013
+core = 7.x
+package = Sports Fan
+; files[] = pickem.model.inc
+; files[] = pickem.model.picks.inc
+files[] = pickem.model.google.inc
+; files[] = pickem.model.standings.inc
+; files[] = pickem.school.inc
+files[] = pickem.entity.inc
+files[] = pickem.test
+
+dependencies[] = entity
+
+; pickem relies on sports events
+dependencies[] = sportsevent
+
+scripts[] = js/init.js

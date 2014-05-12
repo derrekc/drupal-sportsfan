@@ -1,0 +1,6 @@
+; sports event info file
+name = Sports Event
+description = Sports Event module
+core = 7.x
+files[] = sportsevent.entity.inc
+dependencies[] = team

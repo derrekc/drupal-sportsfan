@@ -164,23 +164,6 @@ class PickemManager {
 	}
 }
 
-class Pick {
-	public function __construct($dbobj) {
-		foreach (get_object_vars($dbobj) as $oKey => $oVal) {
-			$this->{$oKey} = $oVal;
-		}
-	}
-	
-	public function pickedSchool() {
-		// If the user (player) made an initial pick for the target game, 
-		// then turned around and changed his/her mind, but failed to 'finalize' (save)
-		// the pick during the session, return that value
-		if (in_array('pick_school_name_session', get_object_vars($this))) {
-			return $this->pick_school_name_session;
-		}
-		return $this->pick_school_name;
-	}
-}
 
 class PickManager {
 	public static function loadPicks($pickem, $uid, $targetWeek=NULL) {

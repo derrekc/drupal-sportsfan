@@ -1,0 +1,29 @@
+<?php
+
+/**
+ * Implements hook_menu()
+ */
+function sportsfan_menu() {
+	return array(
+	);
+}
+
+/**
+ * Implements hook_theme()
+ */
+function sportsfan_theme() {
+	return array(
+	);
+}
+
+/**
+ * Implements hook_block_info()
+ */
+function sportsfan_block_info() {
+	// allow sportsevent, pickem, team modules to add custom blocks that 
+	// can be published by the sportsfan module
+	$sportsfan_custom_block_info = module_invoke_all('sportsfan_block_info');
+
+	return array(
+	) + $sportsfan_custom_block_info;
+}

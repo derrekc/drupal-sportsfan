@@ -1,0 +1,128 @@
+<?php
+
+/**
+ * Implements hook_schema
+ */
+function sportsevent_schema() {
+	return array(
+		'sportsevent' => array(
+			'description' => t('Sporting Event involving two or more opponents'),
+			'fields' => array(
+				'eid' => array('type' => 'serial','unsigned' => TRUE,'not null' => TRUE),
+				'event_type' => array('type' => 'varchar', 'length' => 25, 'default' => 'regular_game'),
+				'title' => array('type' => 'varchar','length' => 255,),
+				'event_date' => array('type' => 'int','not null' => FALSE,'default' => 0,),
+				'week' => array('type' => 'int','size' => 'tiny','unsigned' => TRUE,'not null' => TRUE,'default' => 0,),
+				'season' => array('type' => 'int','not null' => TRUE,'default' => 0,),
+				'host_team_name' => array('type' => 'varchar','length' => 35,),
+				'visiting_team_name' => array('type' => 'varchar','length' => 35,),
+				'host_score' => array('type' => 'int','size' => 'tiny','unsigned' => TRUE,),
+				'visiting_score' => array('type' => 'int','size' => 'tiny','unsigned' => TRUE,),
+				'winning_team_name' => array('type' => 'varchar','length' => 35,),
+				'host_conf_name' => array('type' => 'varchar','length' => 15,),
+				'visiting_conf_name' => array('type' => 'varchar','length' => 15,),
+				'neutral' => array('type' => 'varchar','length' => 1,'not null' => TRUE,'default' => 'N',),
+				'location' => array('type' => 'varchar','length' => 128,),
+				'sport' => array('type' => 'varchar','length' => 12,'not null' => TRUE, 'default' => '',),
+				'betting_line' => array('type' => 'varchar','length' => '50',),
+				'completed' => array('type' => 'varchar','length' => 1,'not null' => TRUE, 'default' => 'N'),
+				'overtimes' => array('type' => 'int','unsigned' => TRUE,'size' => 'tiny',),
+				'stats_processed' => array('type' => 'int', 'default' => 0,),
+				'tv' => array('type' => 'varchar', 'length' => 20,),
+				'event_data' => array('type' => 'blob', 'size' => 'medium',),
+			),
+			'indexes' => array(
+				'host_team' => array(array('host_team_name', 5)),
+				'visiting_team' => array(array('visiting_team_name', 5)),
+				'winning_team' => array(array('winning_team_name', 5)),
+				'sport' => array(array('sport', 5)),	
+				'location' => array(array('location', 5)),
+			),
+			'primary key' => array('eid'),
+			'foreign keys' => array(
+				'host_team' => array(
+					'table' => 'team',
+					'columns' => array('host_team_name' => 'name'),
+				),
+				'visiting_team' => array(
+					'table' => 'team',
+					'columns' => array('visiting_team_name' => 'name'),
+				),
+				'winning_team' => array(
+					'table' => 'team',
+					'columns' => array('winning_team_name' => 'name'),
+				),
+			),
+		),
+		'tourney' => array(
+			'fields' => array(
+				'tid' => array('type' => 'serial','unsigned' => TRUE, 'not null' => TRUE,),
+				'parent_tid' => array('type' => 'int', 'unsigned' => TRUE,),
+				'title' => array('type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => '',),
+				'start' => array('type' => 'int', 'not null' => TRUE, 'default' => 0,),
+				'end' => array('type' => 'int', 'not null' => TRUE, 'default' => 0,),
+				'season' => array('type' => 'int', 'not null' => TRUE, 'default' => 0,),
+				'completed' => array('type' => 'varchar', 'length' => 1,'not null' => TRUE, 'default' => 'N',),
+				'sport' => array('type' => 'varchar', 'length' => 12, 'not null' => TRUE, 'default' => '',),
+				'winning_team_name' => array('type' => 'varchar','length' => 35,),
+				'location' => array('type' => 'varchar', 'length' => 128,),
+				'team_count' => array('type' => 'int', 'size' => 'tiny', 'default' => 0,),
+				'eliminate_type' => array('type' => 'varchar', 'length' => 6, 'not null' => TRUE, 'default' => 'single',),
+			),
+			'primary key' => array('tid'),
+		),
+		'tourney_team' => array(
+			'fields' => array(
+				'tid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE,),
+				'team_name' => array('type' => 'varchar','length' => 35,),
+				'seed' => array('type' => 'int', 'size' => 'tiny', 'default' => 0,),
+			),
+			'primary key' => array('tid'),
+			'indexes' => array(
+				'team_name' => array(array('team_name', 5)),
+			),
+		),
+		'tourney_round' => array(
+			'fields' => array(
+				'tid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0,),
+				'eid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE),
+				'round_number' => array('type' => 'int', 'unsigned' => TRUE, 'size' => 'tiny', 'not null' => TRUE, 'default' => 0),
+				'title' => array('type' => 'varchar', 'length' => 60,),
+				'name' => array('type' => 'varchar', 'length' => 128, 'not null' => TRUE, 'default' => '',),
+			),
+			'primary key' => array('tid', 'eid'),
+		),
+		'sportsseries' => array(
+			'description' => '"Best of" series between two teams/schools',
+			'fields' => array(
+				'ssid' => array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE,),
+				'title' => array('type' => 'varchar', 'length' => 255,),
+				'start' => array('type' => 'int', 'not null' => TRUE, 'default' => 0,),
+				'end' => array('type' => 'int', 'not null' => TRUE, 'default' => 0,),
+				'season' => array('type' => 'int', 'not null' => TRUE, 'default' => 0,),
+				'best_of' => array('type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0,),
+				'completed' => array('type' => 'varchar', 'length' => 1,'not null' => TRUE, 'default' => 'N',),
+				'sport' => array('type' => 'varchar', 'length' => 12, 'not null' => TRUE, 'default' => '',),
+				'host_team_name' => array('type' => 'varchar','length' => 35,),
+				'visiting_team_name' => array('type' => 'varchar','length' => 35,),
+				'winning_team_name' => array('type' => 'varchar','length' => 35,),
+				'location' => array('type' => 'varchar', 'length' => 128,),
+			),
+			'primary key' => array('ssid'),
+			'indexes' => array(
+				'host_team' => array(array('host_team_name', 5)),
+				'visiting_team' => array(array('visiting_team_name', 5)),
+				'winning_team' => array(array('winning_team_name', 5)),
+				'sport' => array(array('sport', 5)),	
+				'location' => array(array('location', 5)),
+			),
+		),
+		'sportsseries_event' => array(
+			'fields' => array(
+				'ssid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0,),
+				'eid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE),
+			),
+			'primary key' => array('ssid', 'eid'),
+		),
+	);
+}

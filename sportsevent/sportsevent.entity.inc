@@ -1,16 +1,16 @@
 <?php
 
-class Game extends Entity {
+class SportsEvent extends Entity {
 	
 	public function __construct($values = array()) {
-		parent::__construct($values, 'game');
+		parent::__construct($values, 'sportsevent');
 
 		// load the host school data
-		$host_team = entity_load('team', FALSE, array('name' => $this->host_school_name));
+		$host_team = entity_load('team', FALSE, array('name' => $this->host_team_name));
 		$this->host_team = reset($host_team);
 
 		// load the visiting school data
-		$visiting_team = entity_load('team', FALSE, array('name' => $this->visiting_school_name));
+		$visiting_team = entity_load('team', FALSE, array('name' => $this->visiting_team_name));
 		$this->visiting_team = reset($visiting_team);
 	}
 	
@@ -52,21 +52,21 @@ class Game extends Entity {
 		return $this->neutral == 'Y' ? 'vs.' : 'at';
 	}
 	
-	public function eventDate($type='medium') {
-		return $this->gameDate($type);
+	public function gameDate($type='medium') {
+		return $this->eventDate($type);
 	}
 	
-	public function gameDate($type='medium') {
-		return format_date($this->game_date, $type);
+	public function eventDate($type='medium') {
+		return format_date($this->event_date, $type);
 	}
 
 	public function opponentsForSelectElement() {
 		$options = array();
-		if (!empty($this->visiting_school_name)) {
-			$options[$this->visiting_school_name] = $this->visiting_school;
+		if (!empty($this->visiting_team_name)) {
+			$options[$this->visiting_team_name] = $this->visiting_school;
 		}
-		if (!empty($this->host_school_name)) {
-			$options[$this->host_school_name] = $this->host_school;
+		if (!empty($this->host_team_name)) {
+			$options[$this->host_team_name] = $this->host_school;
 		}
 		return $options;
 	}
@@ -78,12 +78,12 @@ class Game extends Entity {
 		 * TODO include rank of school
 		 */
 		$o = new stdClass();
-		$o->name = $this->visiting_school_name;
+		$o->name = $this->visiting_team_name;
 		$o->displaytitle = $this->visiting_school;
 		$opponents['visitor'] = $o;
 		
 		$o = new stdClass();
-		$o->name = $this->host_school_name;
+		$o->name = $this->host_team_name;
 		$o->displaytitle = $this->host_school;
 		$opponents['host'] = $o;
 		
@@ -91,11 +91,11 @@ class Game extends Entity {
 	}
 }
 
-class GameUIController extends EntityDefaultUIController {
+class SportsEventUIController extends EntityDefaultUIController {
 	
 }
 
-class GameAPIController extends EntityAPIController {
+class SportsEventAPIController extends EntityAPIController {
 	
 	public function load($ids = array(), $conditions = array()) {
 		return parent::load($ids, $conditions);

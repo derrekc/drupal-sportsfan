@@ -1,4 +1,9 @@
 name = Athletic Venue
 description = Athletic Venue Management
 core = 7.x
+package = Sports Fan
+
+dependencies[] = entity
+dependencies[] = sportsfan
+
 files[] = venue.module

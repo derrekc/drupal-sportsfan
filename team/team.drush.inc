@@ -16,6 +16,11 @@ function team_drush_command() {
     'description' => dt('Import Teams from Google Spreadsheet.'),
 		'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
   );
+   $items['import-conferences'] = array(
+    'callback' => 'conference_import_google_data',
+    'description' => dt('Import Conferences from Google Spreadsheet.'),
+		'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
+  );
   return $items;
 }
 
@@ -69,11 +74,57 @@ function team_import_google_data() {
 					$entity->title_ineligible = 0;
 				}
 				if ($entity->save() !== FALSE) {
-					drush_log(sprintf('Added "%s" to Team database', $entity->displaytitle), 'ok');
+					drush_log(sprintf('Added "%s" to Team table', $entity->displaytitle), 'ok');
 				}
 			}
 		} catch(Exception $e) {
 			drush_log('Can\'t save teams to the database', 'error');
+		}
+	}
+  drush_log('Import complete', 'success');
+}
+
+
+/**
+ * Drush callback.
+ */
+function conference_import_google_data() {
+	$worksheets = GoogleSpreadsheetManager::worksheets(GoogleSpreadsheetManager::CONF_SPREADSHEET_KEY);
+	//drush_print_r($worksheets);
+	
+	$prompt = array();
+	foreach ($worksheets as $k => $w) {
+		$prompt[] = $w['label'];
+	}
+	if (count($worksheets) > 1) {
+		$prompt[] = dt('All');
+	}
+	$option = '';
+	if (($option = (int) drush_choice($prompt)) === FALSE) {
+		return;
+	}
+
+	if ($option < (count($worksheets) + 1)) {
+		$worksheets = (array) array_slice($worksheets, $option-1, 1);
+	}
+
+	foreach ($worksheets as $ws) {
+		try {
+			drush_print(sprintf('Reading from "%s"', $ws['href']));
+			$conferences = GoogleSpreadsheetManager::spreadsheetEntries($ws['href']);
+			foreach ($conferences as $c) {
+				$entity_type = 'conference';
+				$entity = entity_create($entity_type, array('type' => 'conference'));
+				$entity->title = $c['gsx$title']['$t'];
+				$entity->displaytitle = $c['gsx$displaytitle']['$t'];
+				$entity->name = $c['gsx$name']['$t'];
+				$entity->league = $c['gsx$league']['$t'];
+				if ($entity->save() !== FALSE) {
+					drush_log(sprintf('Added "%s" to Conference table', $entity->displaytitle), 'ok');
+				}
+			}
+		} catch(Exception $e) {
+			drush_log('Can\'t save conferences to the database', 'error');
 		}
 	}
   drush_log('Import complete', 'success');

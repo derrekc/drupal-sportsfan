@@ -3,3 +3,5 @@ description = Module for displaying and managing data for sports fans
 core = 7.x
 package = Sports Fan
 
+files[] = sportsfan.model.google.inc
+

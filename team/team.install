@@ -8,7 +8,7 @@ function team_schema() {
 		'team' => array(
 			'description' => 'Table of teams/clubs in sports',
 			'fields' => array(
-				'id' => array('type' => 'serial','not null' => TRUE,'unsigned' => TRUE,),
+				'tid' => array('type' => 'serial','not null' => TRUE,'unsigned' => TRUE,),
 				'title' => array('type' => 'varchar','length' => 35,'not null' => TRUE,'default' => '',),
 				'displaytitle' => array('type' => 'varchar','length' => 45,'not null' => TRUE,'default' => '',),
 				'name' => array('type' => 'varchar','length' => 35,'not null' => TRUE,'default' => '',),
@@ -20,12 +20,63 @@ function team_schema() {
 				'conf_division' => array('type' => 'varchar','length' => 25,),
 				'active' => array('type' => 'int','size' => 'tiny','not null' => TRUE,'default' => 1,),
 			) + entity_exportable_schema_fields(),
-			'primary key' => array('id'),
+			'primary key' => array('tid'),
 			'indexes' => array(
 				'machine_name' => array(array('name', 5)),
 				'conf_name' => array(array('conf_name', 3)),
 				'league' => array(array('league', 3)),		
 			)
+		),
+		'conference' => array(
+			'fields' => array(
+				'cid' => array('type' => 'serial','unsigned' => TRUE,'not null' => TRUE,),
+				'name' => array('type' => 'varchar','length' => 35,'not null' => TRUE,'default' => '',),
+				'title' => array('type' => 'varchar','length' => 128,'not null' => TRUE,'default' => '',),
+				'displaytitle' => array('type' => 'varchar','length' => 128,),
+				'league' => array('type' => 'varchar', 'length' => '15'),
+			) + entity_exportable_schema_fields(),
+			'primary key' => array('cid'),
+			'indexes' => array(
+				'conf_name' => array(array('name', 5)),
+			),
+		),
+		'team_records' => array(
+			'fields' => array(
+				'tid' => array('type' => 'int','not null' => TRUE,'unsigned' => TRUE,),
+				'team_name' => array('type' => 'varchar','length' => 35, 'not null' => TRUE, 'default' => ''),
+				'season' => array('type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'not null' => TRUE,),
+				'sport' => array('type' => 'varchar','length' => 12,'not null'=>TRUE,'default' =>''),
+				'wins' => array('type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'default' => 0,),
+				'losses' => array('type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'default' => 0,),
+				'ties' => array('type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'default' => 0,),
+				'tag' => array('type' => 'varchar', 'length' => 15,),
+			),
+			'primary key' => array('tid','season','sport','tag'),
+			'indexes' => array(
+				'sport' => array(array('sport', 5)),
+				'team_name' => array(array('team_name', 6)),
+				'tag' => array(array('tag', 5)),
+			),
+		),
+		'team_points' => array(
+			'fields' => array(
+				'tid' => array('type' => 'int','not null' => TRUE,'unsigned' => TRUE,),
+				'team_name' => array('type' => 'varchar','length' => 35,'not null' => TRUE,'default' => ''),
+				'season' => array('type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'not null' => TRUE,),
+				'sport' => array('type' => 'varchar','length' => 12,'not null' => TRUE,'default' => ''),
+				'pf' => array('type' => 'int', 'size' => 'medium', 'unsigned' => TRUE, 'default' => 0,),
+				'pa' => array('type' => 'int', 'size' => 'medium', 'unsigned' => TRUE, 'default' => 0,),
+				'gp' => array('type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'default' => 0,),
+				'ppg' => array('type' => 'float', 'default' => 0.0,),
+				'ppa' => array('type' => 'float', 'default' => 0.0,),
+				'tag' => array('type' => 'varchar', 'length' => 15, 'not null' => TRUE,),
+			),
+			'primary key' => array('tid','season','sport','tag'),
+			'indexes' => array(
+				'sport' => array(array('sport', 5)),
+				'team_name' => array(array('team_name', 6)),
+				'tag' => array(array('tag', 5)),
+			),
 		),
 	);
 }

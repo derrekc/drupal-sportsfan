@@ -5,13 +5,30 @@
  */
 function sportevents_menu() {
 	return array(
-		'admin/structure/college-game/manage' => array(
-			'title' => 'College Games',
+		'admin/content/sportsevent/ncaaf' => array(
+			'title' => 'NCAA Football',
 			'access arguments' => array('administer sportsevent entities'),
+			'type' => MENU_NORMAL_ITEM,
 		),
-		'admin/structure/pro-game/manage' => array(
-			'title' => 'College Games',
+		'admin/structure/sportsevent' => array(
+			'title' => 'Sporting Events',
 			'access arguments' => array('administer sportsevent entities'),
+			'type' => MENU_NORMAL_ITEM,
+		),
+		'admin/structure/sportsevent/ncaaf/manage' => array(
+			'title' => 'NCAA Football',
+			'access arguments' => array('administer sportsevent entities'),
+			'type' => MENU_NORMAL_ITEM,
+		),
+		'admin/structure/sportsevent/ncaam/manage' => array(
+			'title' => 'NCAA Men\'s Basketball',
+			'access arguments' => array('administer sportsevent entities'),
+			'type' => MENU_NORMAL_ITEM,
+		),
+		'admin/structure/sportsevent/nfl/manage' => array(
+			'title' => 'NFL Football',
+			'access arguments' => array('administer sportsevent entities'),
+			'type' => MENU_NORMAL_ITEM,
 		),
 	);
 }
@@ -28,10 +45,10 @@ function sportsevent_entity_info() {
 			'entity class' => 'SportsEvent',
 			'controller class' => 'SportsEventAPIController',
 			'base table' => 'sportsevent',
-			'fieldable' => FALSE,
+			'fieldable' => TRUE,
 			'entity keys' => array(
 				'id' => 'eid',
-				'bundle' => 'event_type',
+				'bundle' => 'sport',
 			),
 			'load hook' => 'sportsevent_load',
 			'admin ui' => array(
@@ -40,18 +57,25 @@ function sportsevent_entity_info() {
 				'file' => 'includes/sportsevent.admin.inc',
 			),
 			'bundles' => array(
-				'college-game' => array(
-					'label' => 'College Game',
+				'ncaaf' => array(
+					'label' => 'College Football',
 					'admin' => array(
-						'path' => 'admin/structure/college-game/manage',
-						'access arguments' => array('administer sports events entities'),
+						'path' => 'admin/structure/sportsevent/ncaaf/manage',
+						'access arguments' => array('administer sportsevent entities'),
 					),
 				),
-				'pro-game' => array(
-					'label' => 'Pro Game',
+				'ncaam' => array(
+					'label' => 'Men\'s College Basketball',
 					'admin' => array(
-						'path' => 'admin/structure/pickem/pro-game/manage',
-						'access arguments' => array('administer sports events entities'),
+						'path' => 'admin/structure/sportsevent/ncaam/manage',
+						'access arguments' => array('administer sportsevent entities'),
+					),
+				),
+				'nfl' => array(
+					'label' => 'NFL',
+					'admin' => array(
+						'path' => 'admin/structure/sportsevent/nfl/manage',
+						'access arguments' => array('administer sportsevent entities'),
 					),
 				),
 			),
@@ -152,7 +176,7 @@ function sportsevent_load($sportsevent_id, $reset=FALSE) {
 /**
  * Load multiple games based on certain conditions.
  */
-function sportsevent_load_multiple($sportsevent_ids = FALSE, $conditions = array('active' => 1), $reset = FALSE) {
+function sportsevent_load_multiple($sportsevent_ids = FALSE, $conditions = array(), $reset = FALSE) {
   return entity_load('sportsevent', $sportsevent_ids, $conditions, $reset);
 }
 

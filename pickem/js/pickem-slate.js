@@ -9,8 +9,13 @@
 					$('#provisioningProgress').show();
 					$.ajax({
 						dataType : 'json',
-						url : settings.pickem.provisioning_path,
+						url : settings.basePath + settings.pickem.provisioning_path,
 						success : function(data, status, o) {
+							$.each(data.selectors, function( index, value ) {
+							  $(value)
+							  	.removeClass('btn-default')
+							  	.addClass('btn-info');
+							});
 							$('#provisioningProgress').hide();
 							$('#provisioningModal').modal('hide');
 						},

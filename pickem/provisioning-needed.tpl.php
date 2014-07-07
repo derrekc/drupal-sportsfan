@@ -1,5 +1,11 @@
 <?php
-
+	if ($pick_default == 'hometeam') {
+		$label = 'Home';
+	} elseif ($pick_default == 'visitingteam') {
+		$label = 'Visiting';
+	} elseif ($pick_default == 'topranked') {
+		$label = 'Top Ranked';
+	}
 ?>
 <!-- Modal -->
 <div class="modal fade" id="provisioningModal" tabindex="-1" role="dialog" aria-labelledby="provisionModalLabel" aria-hidden="true">
@@ -10,7 +16,8 @@
         <h4 class="modal-title" id="provisionModalLabel">Create Picks...?</h4>
       </div>
       <div class="modal-body">
-      <p>Shall I initialize your picks for this week...?</p>
+      <p><strong>Shall I initialize your picks for this week...?</strong></p>
+      <p>If so, your picks will default to the <strong><?php print $label; ?></strong> team.</p>
 			<div id="provisioningProgress" class="progress progress-striped active">
 			  <div class="progress-bar progress-bar-info" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">
 			    <span class="sr-only">Please wait..</span>

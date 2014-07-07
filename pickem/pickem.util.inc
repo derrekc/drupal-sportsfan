@@ -24,7 +24,7 @@ function pickem_clear_pickem_session_data($pname = NULL, $week = NULL) {
 	#}
 	
 	$cache_key = sprintf('picks.%s', $user->uid);
-	cache_clear_all($cache_key, 'cache');
+	cache_clear_all('picks*', 'cache', TRUE);
 	
 	drupal_goto('<front>');
 }	

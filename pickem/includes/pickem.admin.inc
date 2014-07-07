@@ -4,7 +4,6 @@
  * Administrative form - Pickem Data
  */
 function pickem_form($form, &$form_state, $pickem, $op) {
-	
 	$form['title'] = array(
 		'#type' => 'textfield',
 		'#title' => t('Pick\'Em Title'),
@@ -23,14 +22,14 @@ function pickem_form($form, &$form_state, $pickem, $op) {
 	$form['basic-info'] = array(
 		'#type' => 'fieldset',
 		'#title' => t('Basic Settings'),
-		'#collapsible' => FALSE,
+		'#collapsible' => TRUE,
 		'#collapsed' => FALSE,
 		'#weight' => -8,
 	);
 	$form['basic-info']['sport'] = array(
 		'#type' => 'select',
 		'#title' => t('Sport'),
-		'#options' => PickemManager::sportOptions(),
+		'#options' => Pickem::sportOptions(),
 		'#default_value' => $pickem->sport,
 	);
 	$form['basic-info']['season'] = array(
@@ -101,7 +100,43 @@ function pickem_form($form, &$form_state, $pickem, $op) {
  */
 function pickem_form_submit($form, &$form_state) {
 	$pickem = entity_ui_form_submit_build_entity($form, $form_state);
+	$pickem->description = $form_state['values']['description']['value'];
+	$pickem->desc_format = $form_state['values']['description']['format'];
 	$pickem->save();
 	$form_state['redirect'] = 'admin/content/pickem';
 	
+}
+
+function pickem_admin_players_form($form, &$form_state, $pickem) {
+	// create table for players..
+	$header = array(
+		t('Name'),
+		t('Actions'),
+	);
+	$rows = array();
+	$users = db_select('users','u')
+		->fields('u')
+		->condition('status', 1)
+		->condition('name', 'admin', '<>')
+		->execute();
+		
+	foreach ($users as $user) {
+		$row = array();
+		$row[] = $user->name;
+		if (array_key_exists($user->uid, $pickem->players)) {
+			$row[] = l(t('Remove Player'), 'admin/content/pickem/manage/1/players/remove/' . $user->uid);
+		}
+		else {
+			$row[] = l(t('Add User To Pickem'), 'admin/content/pickem/manage/1/players/add/' . $user->uid);
+		}
+		$rows[] = $row;
+	}
+	
+	$form['users'] = array(
+		'#theme' => 'table',
+		'#header' => $header,
+		'#rows' => $rows,
+		'#empty' => t('No Players/Users'),
+	);
+	return $form;
 }

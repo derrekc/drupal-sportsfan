@@ -3,4 +3,5 @@ name = Sports Event
 description = Sports Event module
 core = 7.x
 files[] = sportsevent.entity.inc
+stylesheets[all][] = css/sportsevent.css
 dependencies[] = team

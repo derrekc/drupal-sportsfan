@@ -1,12 +1,5 @@
 <?php
 
-// 50 items per page.
-define('TOTAL_ITEMS_PER_PAGE', 50);
-
-// Admin uri links.
-define('ADMIN_CONTENT_TEAMS_MANAGE_URI', 'admin/content/teams/manage/');
-define('ADMIN_CONTENT_TEAMS_URI', 'admin/content/teams');
-
 /**
  * Implements hook_entity_info
  */
@@ -21,7 +14,7 @@ function team_entity_info() {
 			'base table' => 'team',
 			'fieldable' => TRUE,
 			'entity keys' => array(
-				'id' => 'id'
+				'id' => 'tid'
 			),
 			'load hook' => 'team_load',
 			'admin ui' => array(
@@ -56,6 +49,23 @@ function team_entity_info() {
 			'access callback' => 'team_access_callback',
 			'static cache' => TRUE,
 			'uri callback' => 'entity_class_uri',
+		),
+		
+		// CONFERENCE
+		'conference' => array(
+			'label' => t('Sports Conference'),
+			'label callback' => 'entity_label',
+			'entity class' => 'Conference',
+			'plural label' => t('Sports Conferences'),
+			'controller class' => 'ConferenceController',
+			'base table' => 'conference',
+			'load look' => 'conference_load',
+			'fieldable' => TRUE,
+			'uri callback' => 'conference_basic_uri',
+			'entity keys' => array(
+				'id' => 'cid',
+			),
+			'module' => 'team',
 		),
 	);
 	
@@ -170,11 +180,31 @@ function team_theme() {
   );
 }
 
+// LABEL CALLBACKS
 /**
  * Label callback for team entities
  */
 function team_label_callback($team, $type) {
 	return empty($team->name) ? 'Untitled Team' : $team->displaytitle;	
+}
+
+/**
+ * URI Callback for Team
+ */
+function team_basic_uri($team) {
+	return array(
+		'path' => sprintf('team/%s/%s', $team->sport, $team->name),
+	);
+}
+
+// URI CALLBACKS
+/**
+ * URI Callback for Conference
+ */
+function conference_basic_uri($conference) {
+	return array(
+		'path' => sprintf('conference/%s', $conference->name),
+	);
 }
 
 /**
@@ -224,146 +254,51 @@ function team_view_entity($team) {
   return $team_output;
 }
 
-/******** CLASS DEFINITIONS ********/
 
 /**
- * Custom controller for the administrator UI
+ * Menu autoloader for /conference.
  */
-class TeamUIController extends EntityDefaultUIController {
-	
-	/**
-	 * Override the menu hook for default ui controller
-	 */
-	public function hook_menu() {
-		$items = parent::hook_menu();
-		$items[$this->path]['title'] = t('Teams');
-		$items[$this->path]['description'] = t('Manage Teams, including fields');
-    $items[$this->path]['access callback'] = 'team_access_callback';
-    $items[$this->path]['access arguments'] = array('administer team entities');
-    $items[$this->path]['type'] = MENU_LOCAL_TASK;
-    return $items;
-	}
-
-  /**
-   * Admin form for searching and doing bulk operations.
-   */
-  public function overviewForm($form, &$form_state) {
-    $form['pager'] = array('#theme' => 'pager');
-
-    $header = array(
-      'id' => array('data' => t('Team ID'), 'field' => 'id'),
-      'title' => array('data' => t('Title'), 'field' => 'title'),
-      'operations' => array('data' => t('Operations'), 'field' => 'operations'),
-    );
-
-    $options = array();
-    $search_term = !empty($_GET['search']) ? $_GET['search'] : NULL;
-
-    $query = new EntityFieldQuery();
-    $query
-      ->entityCondition('entity_type', 'team');
-
-    if (!empty($search_term)) {
-      $query->propertyCondition('name', '%' . $search_term . '%', 'like');
-    }
-    // Check for sort order and sort key.
-    if (!empty($_GET['sort']) && !empty($_GET['order'])) {
-      $sort = strtoupper($_GET['sort']);
-      $order = strtolower($_GET['order']);
-      $order = str_replace(' ', '_', $order);
-      if ($order != 'operations') {
-        $query->propertyOrderBy($order, $sort);
-      }
-    }
-
-    $query->pager(TOTAL_ITEMS_PER_PAGE);
-
-    $result = $query->execute();
-    $team_results = !empty($result['team']) ? $result['team'] : array();
-    $team_array = !empty($team_results) ? team_load_multiple(array_keys($team_results)) : array();
-    foreach ($team_array as $team_id => $team) {
-      $options['team_id-' . $team_id] = array(
-        'id' => l($team->id, 'team/' . $team->id),
-        'title' => l($team->title, 'team/' . $team->id),
-        'operations' =>
-        l(t('View'), 'team/' . $team->id) . ' ' .
-        l(t('Edit'), ADMIN_CONTENT_TEAMS_MANAGE_URI . $team_id, array('query' => array('destination' => ADMIN_CONTENT_TEAMS_URI))) . ' ' .
-        l(t('Delete'), ADMIN_CONTENT_TEAMS_MANAGE_URI . $team_id . '/delete', array('attributes' => array('class' => array('team-delete-' . $team->id), ), 'query' => array('destination' => ADMIN_CONTENT_TEAMS_URI))),
-      );
-    }
-
-    $form['search'] = array(
-      '#type' => 'fieldset',
-      '#title' => t('Basic Search'),
-      '#collapsible' => TRUE,
-      '#collapsed' => !empty($search_term) ? FALSE : TRUE,
-    );
-
-    $form['search']['search_text'] = array(
-      '#type' => 'textfield',
-      '#title' => t('Search Term'),
-      '#default_value' => !empty($search_term) ? $search_term : '',
-    );
-
-    $form['search']['search_submit'] = array(
-      '#type' => 'submit',
-      '#value' => t('Search'),
-    );
-
-    $form['bulk_operations'] = array(
-      '#type' => 'fieldset',
-      '#title' => t('Bulk Operations'),
-      '#collapsible' => TRUE,
-      '#collapsed' => TRUE,
-    );
-
-    $form['bulk_operations']['operations'] = array(
-      '#type' => 'select',
-      '#options' => array(
-        0 => t('Select a bulk operation'),
-        'delete' => t('Delete selected teams'),
-      ),
-    );
-
-    $form['bulk_operations']['submit'] = array(
-      '#type' => 'submit',
-      '#value' => t('Submit'),
-    );
-
-    $form['entities'] = array(
-      '#type' => 'tableselect',
-      '#header' => $header,
-      '#options' => $options,
-      '#attributes' => array('class' => array('entity-sort-table')),
-      '#empty' => t('There are no teams.'),
-    );
-
-    return $form;
-  }
-
-  /**
-   * Form Submit method.
-   */
-  public function overviewFormSubmit($form, &$form_state) {
-    $values = $form_state['input'];
-    $team_ids = array();
-
-    if (!empty($values['entities'])) {
-      foreach ($values['entities'] as $index => $value) {
-        if (!empty($value)) {
-          $team_ids[] = str_replace('team_id-', '', $value);
-        }
-      }
-
-      switch ($values['operations']) {
-        case 'delete':
-          drupal_goto('admin/content/team/bulk/delete/' . implode('|', $team_ids));
-          break;
-      }
-    }
-
-    if (!empty($values['search_text'])) {
-      drupal_goto('admin/content/team', array('query' => array('search' => $values['search_text'])));
-    }
-  }
+function conference_load($conference_id, $reset = FALSE) {
+  $conference = conference_load_multiple(array($conference_id), array(), $reset);
+  return reset($conference);
 }
+
+/**
+ * Load multiple team based on certain conditions.
+ */
+function conference_load_multiple($conference_ids = FALSE, $conditions = array('active' => 1), $reset = FALSE) {
+  return entity_load('conference', $conference_ids, $conditions, $reset);
+}
+
+/**
+ * Load team by name
+ */
+function conference_load_by_name($cname) {
+	$conferences = conference_load_multiple(FALSE, array('name' => $cname));
+	return reset($conferences);
+}
+/**
+ * Deletes a Team.
+ */
+function conference_delete(Conference $conference) {
+  $team->delete();
+}
+
+/**
+ * Delete multiple team.
+ */
+function conference_delete_multiple(array $conference_ids) {
+  entity_get_controller('conference')->delete($conference_ids);
+}
+
+/**
+ * View for /conference/<conference_id> page.
+ */
+function conference_view_entity($team) {
+  $fullname = $team->displaytitle ;
+  drupal_set_title($fullname);
+  // Path not entity.
+  $conference_output = theme('conference_full', array('conference' => $team));
+  return $conference_output;
+}
+

@@ -8,24 +8,11 @@ function pickem_drush_command() {
 		'aliases' => array('pklines'),
 		'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
 	);
-	$items['load-conf-games'] = array(
-		'description' => 'Load games for a conference',
-		'aliases' => array('lcgames'),
-		'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
-		'arguments' => array(
-			'conf' => 'The (machine) name of the conference',
-		),
-	);
   $items['import-pickems'] = array(
     'callback' => 'pickem_import_pickem_google_data',
     'description' => dt('Import Pickems from Google Spreadsheet.'),
 		'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
   );
-	$items['refresh-schools'] = array(
-		'description' => 'Load unprocessed schools from "schools.tsv"',
-		'aliases' => array('schools'),
-		'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
-	);
 	$items['update-stats'] = array(
 		'description' => 'Update the standings for the schools',
 		'aliases' => array('sstats'),
@@ -121,14 +108,44 @@ function pickem_import_pickem_google_data() {
 				if ($entity->save() !== FALSE) {
 					drush_log(sprintf('Added "%s" to Pickem database', $entity->title), 'ok');
 					
+					$new_bundle = new stdClass();
+					$new_bundle->type = $entity->name;
+					$new_bundle->label = t($entity->title);
+					$new_bundle->is_new = TRUE;
+					$controller = new PickemSlateController('pickem_slate');
+					$controller->save($new_bundle);
+					#drush_log('saved pickem slates')
+					
 					if ($entity->active == 1) {
+						if ($entity->weeks > 0 && drush_confirm(sprintf('Add %s week(s) entries for this pickem...?', $entity->weeks))) {
+							$startdate = DateTime::createFromFormat('U', $entity->startdate);
+							for ($i = 0; $i <= $entity->weeks; $i++) {
+								$o = new stdClass();
+								$o->week = $i + 1;
+								$o->pickem_id = $entity->pid;
+								$o->title = sprintf('Week %s', $i + 1);
+								$o->start = $startdate->getTimestamp();
+								$startdate->add(new DateInterval('P7D'));
+								$o->end = $startdate->getTimestamp();
+								
+								if (drupal_write_record('week', $o) !== FALSE) {
+									drush_print(sprintf('added week %s (%s) to the Week table', $o->week, $entity->title));
+								}
+								
+								$startdate->add(new DateInterval('P1D'));
+							}							
+						}	
+						
+						// @TODO - loop through comma-delimited list of fields
+						
 						// create an instance
+						/*
 						$instances = array(
 							array(
 								'entity_type' => 'pickem',
-								'bundle' => $bundle,
+								'bundle' => $new_bundle->type,
 								'field_name' => 'pick_default',
-								'label' => t('Default Choice for Picks'),
+								'label' => t(sprintf('%s: Default Choice for Picks', $entity->title)),
 								'description' => t('This will be the default selection for each game when making picks.'),
 								'type' => 'list_text',
 								'widget' => array(
@@ -144,15 +161,15 @@ function pickem_import_pickem_google_data() {
 							),
 							array(
 								'entity_type' => 'pickem',
-								'bundle' => $bundle,
+								'bundle' => $new_bundle->type,
 								'field_name' => 'max_bye_weeks_allowed',
-								'label' => t('Maximum number of bye weeks allowed'),
+								'label' => t(sprintf('%s: Maximum number of bye weeks allowed', $entity->title)),
 								'description' => t('Number of bye weeks allowed in this pickem'),
 								'type' => 'number_integer',
 								'settings' => array(
 									'min' => 0,
 								)
-							)
+							),
 						);
 						foreach ($instances as $i) {
 							try {
@@ -161,10 +178,54 @@ function pickem_import_pickem_google_data() {
 								drush_log($e->getMessage(), 'error');
 							}
 						}
+						*/
 					}
+				}
+
+				// create the slate of games for the upcoming season?
+				if ((!empty($entity->autoschool) || !empty($entity->autoconference)) && 
+					drush_confirm('Add games to this slate based on values in \'autoconference\' and/or \'autoschool\'...?')) {
+					if (!empty($entity->autoschool) || !empty($entity->autoconference)) {
+						// split autoschool by comma delimiter
+						$autoschools = split(',', $entity->autoschool);
+						$autoconferences = split(',', $entity->autoconference);
+						$query = db_select('sportsevent', 'se')
+							->fields('se')
+							->condition('sport', $entity->sport)
+							->condition('season', $entity->season)
+							->condition(
+									db_or()
+										->condition(db_or()
+											->condition('host_team_name', $autoschools, 'IN')
+											->condition('visiting_team_name', $autoschools, 'IN'))
+										->condition(db_or()
+											->condition('host_conf_name', $autoconferences, 'IN')
+											->condition('visiting_conf_name', $autoconferences, 'IN'))
+								);
+						$result = $query->execute();
+						foreach ($result as $se) {
+							$slate_entity = entity_create('pickem_slate', array('type' => 'pickem_slate'));
+							$slate_entity->season = $entity->season;
+							$slate_entity->pid = $entity->pid;
+							$slate_entity->event_entity_id = $se->eid;
+							$slate_entity->event_entity_type = 'sportsevent';
+							$slate_entity->week = $se->week;
+							$slate_entity->slate_date = $se->event_date;
+							if ($slate_entity->save() !== FALSE) {
+								drush_print(sprintf('added %s vs %s (week %s) to slate of games for %s', 
+									$se->visiting_team_name, $se->host_team_name, $se->week, $entity->title), 0);
+							}
+						}
+						#drush_print($query->__toString());
+					}
+					else {
+						drush_print('No games to add based on autoschool value');
+					}
+					
 				}
 			}
 		} catch(Exception $e) {
+			drush_print($e->getMessage());
 			drush_log('Can\'t save pickems to the database', 'error');
 		}
 	}

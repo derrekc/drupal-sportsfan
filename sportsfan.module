@@ -5,6 +5,12 @@
  */
 function sportsfan_menu() {
 	return array(
+		'fan' => array(
+			'title' => 'Sports Fan Home',
+			'page callback' => 'sportsfan_home',
+			'file' => 'sportsfan.page.inc',
+			'access callback' => TRUE,
+		),
 	);
 }
 

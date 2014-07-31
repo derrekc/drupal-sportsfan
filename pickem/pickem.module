@@ -62,14 +62,14 @@ function pickem_menu() {
 			'access callback' => 'pickem_player_access',
 			'title' => 'Player Form',
 		),
-		'request-pickem' => array(
-			'title' => 'Request Pickem',
-			'page callback' => 'drupal_get_form',
-			'page arguments' => array('pickem_request_new_pickem'),
-			'access callback' => 'pickem_user_access',
-			'access arguments' => array('authenticated user'),
-			'file' => 'pickem.form.inc',
-		),
+		#'request-pickem' => array(
+		#	'title' => 'Request Pickem',
+		#	'page callback' => 'drupal_get_form',
+		#	'page arguments' => array('pickem_request_new_pickem'),
+		#	'access callback' => 'pickem_user_access',
+		#	'access arguments' => array('authenticated user'),
+		#	'file' => 'pickem.form.inc',
+		#),
 		'pickem/%pickem/join' => array(
 			'page callback' => 'drupal_get_form',
 			'page arguments' => array('pickem_pickem_user_join_form', 1),
@@ -79,16 +79,19 @@ function pickem_menu() {
 			'page callback' => 'pickem_pickem_slate',
 			'page arguments' => array(1),
 			'file' => 'pickem.pages.inc',
-			'access callback' => 'pickem_user_access',
-			'access arguments' => array('authenticated user'),
-			'title' => 'Pickem Slate',
+			'access callback' => TRUE,
+			#'access callback' => 'pickem_user_access',
+			#'access arguments' => array('authenticated user'),
+			'title callback' => 'pickem_label_callback',
+			'title arguments' => array(1),
 		),
 		'pickem/%pickem/slate/%' => array(
 			'page callback' => 'drupal_get_form',
 			'page arguments' => array('pickem_pickem_slate_form', 1, 3),
 			'file' => 'pickem.pages.inc',
-			'access callback' => 'pickem_user_access',
-			'access arguments' => array('authenticated user'),
+			'access callback' => TRUE,
+			#'access callback' => 'pickem_user_access',
+			#'access arguments' => array('authenticated user'),
 			'title' => 'Make Your Picks',
 		),
 		'pickem/%pickem/provision-slate' => array(
@@ -113,6 +116,30 @@ function pickem_menu() {
 			'file' => 'pickem.pages.game.inc',
 		),
 		
+		# ================ PICK MENU PATHS ==================
+		'pickem/pick/comment/add' => array(
+			'page callback' => 'pickem_pick_add_comment',
+			'access callback' => 'pickem_user_access',
+			'access arguments' => array('authenticated user'),
+			'file' => 'pickem.pick.inc',
+			'type' => MENU_CALLBACK,
+		),
+		'pickem/%pickem/slate/%pickem_slate/comments' => array(
+			'page callback' => 'pickem_pick_comment_listing',
+			'page arguments' => array(1, 3),
+			'access callback' => 'pickem_user_access',
+			'access arguments' => array('authenticated user'),
+			'file' => 'pickem.pick.inc',
+			'type' => MENU_CALLBACK,
+		),
+		'pickem/%pickem/slate/pick-stats/%pickem_slate' => array(
+			'page callback' => 'pickem_pick_stats',
+			'page arguments' => array(1, 4),
+			'access callback' => 'pickem_user_access',
+			'access arguments' => array('authenticated user'),
+			'file' => 'pickem.pick.inc',
+			'type' => MENU_CALLBACK,
+		),
 		# ============= ADMIN UTILITY PATHS =============
 		'pickem/clear-session' => array(
 			'page callback' => 'pickem_clear_pickem_session_data',
@@ -199,6 +226,20 @@ function pickem_entity_info() {
 			),
 			'module' => 'pickem',
 		),
+		'pick_comment' => array(
+			'label' => t('Pick Comment'),
+			'label callback' => 'entity_label',
+			'entity class' => 'PickComment',
+			'controller class' => 'PickCommentController',
+			'plural label' => t('Pick Comments'),
+			'base table' => 'pick_comment',
+			'load hook' => 'pick_comment_load',
+			'entity keys' => array(
+				'id' => 'pcid',
+			),
+			'module' => 'pickem',
+			'fieldable' => FALSE,
+		),
 		'pickem_player' => array(
 			'label' => t('Pickem Player'),
 			'label callback' => 'entity_label',
@@ -237,17 +278,16 @@ function pickem_access_callback() {
 function pickem_entity_load(&$entities, $type) {
 	if ($type == 'user') {
 		foreach ($entities as $user) {
-			if (!isset($user->pickems)) {
 				$pickems = pickem_player_load_multiple(array($user->uid));
-				if ($pickems !== FALSE) {
+				if ($pickems !== FALSE && !empty($pickems)) {
 					$user->pickems = array();
 					foreach ($pickems as $p) {
 						$user->pickems[$p->pickem_id] = TRUE;
 					}
 				} else {
-					$user->pickems = $pickems;
+					$user->pickems = FALSE;
 				}
-			}
+
 		}
 	}
 	foreach ($entities as $entity) {
@@ -318,6 +358,53 @@ function pickem_theme($existing, $type, $theme, $path) {
 		'pickem-form-notes' => array(
 			'template' => 'pickem_form_notes',
 			'variables' => array(),
+		),
+		'add-pick-comment-trigger' => array(
+			'template' => 'add-pick-comment-trigger',
+			'variables' => array('modal_class' => NULL, 'modal_dialog_id' => NULL, 'disabled' => FALSE,),
+			'path' => drupal_get_path('module', 'pickem') . '/theme',
+		),
+		'bs-modal-trigger' => array(
+			'template' => 'bs-modal-trigger',
+			'variables' => array(
+				'modal_class' => NULL, 
+				'modal_dialog_id' => NULL, 
+				'data_target' => NULL,
+				'btn_display_class' => 'btn-default',
+				'btn_size_class' => '',
+				'title' => NULL,
+				'disabled' => FALSE,
+				'pickem_id' => NULL,
+				'target_entity_id' => NULL,
+			),
+			'path' => drupal_get_path('module', 'pickem') . '/theme',
+		),
+		'modal-pick-stats' => array(
+			'template' => 'modal-pick-stats',
+			'path' => drupal_get_path('module', 'pickem') . '/theme',
+			'variables' => array(),
+		),
+		'modal-add-pick-comment' => array(
+			'template' => 'modal-add-pick-comment',
+			'variables' => array(
+				'modal_class' => NULL, 
+				'modal_dialog_id' => NULL, 
+				'slate_event_id' => NULL, 
+				'disable_buttons' => FALSE,
+			),
+			'path' => drupal_get_path('module', 'pickem') . '/theme',
+		),
+		'modal-pick-comments' => array(
+			'template' => 'modal-pick-comments',
+			'variables' => array(
+				'modal_class' => NULL, 
+				'modal_dialog_id' => NULL, 
+			),
+			'path' => drupal_get_path('module', 'pickem') . '/theme',
+		),
+		'submitting-picks' => array(
+			'path' => drupal_get_path('module', 'pickem') . '/theme',
+			'template' => 'submitting',
 		),
 		'modal-provisioning-needed' => array(
 			'template' => 'provisioning-needed',
@@ -623,7 +710,7 @@ function pickem_home() {
 			if ($user_can_play) {
 				$pickems[$pid]->ui_actions[] = array(
 					'#type' => 'markup',
-					'#markup' => l(t('Overview/Standings'), sprintf('pickem/%s', $pickems[$pid]->pid), 
+					'#markup' => l(t('Play / Make Picks'), sprintf('pickem/%s/slate', $pickems[$pid]->pid), 
 						array(
 							'attributes' => array('class' => array('btn', 'btn-primary'))
 						)
@@ -631,7 +718,7 @@ function pickem_home() {
 				);
 				$pickems[$pid]->ui_actions[] = array(
 					'#type' => 'markup',
-					'#markup' => l(t('Play / Make Picks'), sprintf('pickem/%s/slate', $pickems[$pid]->pid), 
+					'#markup' => l(t('Overview/Standings'), sprintf('pickem/%s', $pickems[$pid]->pid), 
 						array(
 							'attributes' => array('class' => array('btn', 'btn-default'))
 						)
@@ -681,6 +768,10 @@ function pickem_home() {
 function pickem_pickem_user_join_form($form, &$form_state, $pickem) {
 	global $user;
 
+	if (user_is_anonymous()) {
+		drupal_goto('user/register');
+	}
+	
 	$player = $pickem->getPlayer($user->uid);
 	$form['#parents'] = array();
 	
@@ -1522,6 +1613,16 @@ function pick_delete(Pick $pick) {
  */
 function pick_delete_multiple(array $pick_ids) {
   entity_get_controller('pick')->delete($pick_ids);
+}
+
+// pick comment
+function pick_comment_load($pcid, $reset=FALSE) {
+	$pick_comment = pick_comment_load_multiple(array($pcid), array(), $reset);
+	return reset($pick_comment);
+}
+
+function pick_comment_load_multiple($pcids = FALSE, $conditions = array(), $reset = FALSE) {
+	return entity_load('pick_comment', $pcids, $conditions, $reset);
 }
 
 // pickem player

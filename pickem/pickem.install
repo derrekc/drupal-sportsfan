@@ -212,9 +212,9 @@ function pickem_schema() {
 				'pkid' => array('type' => 'serial','unsigned' => TRUE,'not null' => TRUE,),
 				'slid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE,),
 				'uid' => array('type' => 'int','unsigned' => TRUE,'not null' => TRUE,),
+				'playername' => array('type' => 'varchar','length' => 60,'not null' => TRUE,'default' => ''),
 				'pick_team_name' => array('type' => 'varchar','length' => 35,'default' => NULL,),
 				'correct' => array('type' => 'varchar','length' => 1,'default' => NULL,),
-				'comment' => array('type' => 'text', 'size' => 'normal'),
 			) + entity_exportable_schema_fields(),
 			'primary key' => array('pkid'),
 			'foreign keys' => array(
@@ -222,6 +222,19 @@ function pickem_schema() {
 					'table' => 'school',
 					'columns' => array('pick_team_name' => 'name'),
 				),
+			),
+		),
+		'pick_comment' => array(
+			'fields' => array(
+				'pcid' => array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE,),
+				'slid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE,),
+				'uid' => array('type' => 'int','unsigned' => TRUE,'not null' => TRUE,),
+				'playername' => array('type' => 'varchar','length' => 60,'not null' => TRUE,'default' => ''),
+				'comment' => array('type' => 'varchar', 'length' => 140, 'default' => ''),
+			) + entity_exportable_schema_fields(),
+			'primary key' => array('pcid'),		
+			'indexes' => array(
+				'playername' => array(array('playername', 4)),
 			),
 		),
 		'week' => array(

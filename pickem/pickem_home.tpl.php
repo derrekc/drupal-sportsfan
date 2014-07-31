@@ -1,12 +1,14 @@
 <?php if (!$user_is_logged_in): ?>
-	<div>
-		<div class="alert alert-info">
-			<h4>Join The Pickem's!</h4>
+	<div class="panel panel-info">
+	  <div class="panel-heading">
+	    <h3 class="panel-title">Join The Pickem's!</h3>
+	  </div>
+	  <div class="panel-body">
 			<p>
-				Please <a class="alert-link" href="/user/login">sign in</a> or <a class="alert-link" href="/user/register">register an account with us</a> so 
+				Please <a class="alert-link" href="/user/login"><strong>sign in</strong></a> or <a class="alert-link" href="/user/register"><strong>register an account with us</strong></a> so 
 				you'll be able to join one (or more) of the Pickem contests.
 			</p>
-		</div>
+	  </div>
 	</div>
 <?php endif; ?>
 <?php print $pickem_content['active_pickems']; ?>

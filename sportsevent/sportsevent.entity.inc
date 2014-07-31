@@ -15,6 +15,16 @@ class SportsEvent extends Entity {
 		// load the visiting school data
 		$visiting_team = entity_load('team', FALSE, array('name' => $this->visiting_team_name));
 		$this->visiting_team = reset($visiting_team);
+		
+		if ($this->completed == 'Y') {
+			if ($this->winning_team_name == $this->host_team_name) {
+				$this->winning_team = $this->host_team;
+				$this->final_score = sprintf("%s-%s", $this->host_score, $this->visiting_score);
+			} else {
+				$this->winning_team = $this->visiting_team;
+				$this->final_score = sprintf("%s-%s", $this->visiting_score, $this->host_score);
+			}
+		}
 	}
 	
 	public function completed() {
@@ -82,15 +92,35 @@ class SportsEvent extends Entity {
 		 */
 		$o = new stdClass();
 		$o->name = $this->visiting_team_name;
-		$o->displaytitle = $this->visiting_team;
+		$o->displaytitle = $this->visiting_team->displaytitle;
 		$opponents['visitor'] = $this->visiting_team;
 		
 		$o = new stdClass();
 		$o->name = $this->host_team_name;
-		$o->displaytitle = $this->host_team;
+		$o->displaytitle = $this->host_team->displaytitle;
 		$opponents['host'] = $this->host_team;
 		
 		return $opponents;
+	}
+	
+	public function opponentsAsArray() {
+			
+	}
+	
+	public function eventResult() {
+		if (!$this->completed()) {
+			return '';
+		}
+		
+		$out = sprintf("%s, %s F", $this->winning_team->displaytitle, $this->final_score);
+		if (!is_null($this->overtimes)) {
+			if ($this->overtimes == '1') {
+				$out .= " (OT)";
+			} else {
+				$out .= " (" . $this->overtimes . "OT)";
+			}
+		} 
+		return $out;
 	}
 }
 

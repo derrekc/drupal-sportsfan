@@ -131,6 +131,8 @@ function pickem_pickem_slate_form($form, &$form_state, $pickem, $week = NULL) {
 		$user = user_load($user->uid, TRUE);
 	}
 	
+	$user_is_logged_in = user_is_logged_in();
+	
 	// TODO redirect this page when a user (other than an admin)
 	// is attempting to access a future week.
 	// ..well maybe.
@@ -144,9 +146,19 @@ function pickem_pickem_slate_form($form, &$form_state, $pickem, $week = NULL) {
 		drupal_set_message('This Pickem contest is currently closed.  Please try again soon.');
 		drupal_goto('<front>');
 	}
-	if (($user->pickems === FALSE || !array_key_exists($pickem->pid, $user->pickems)) && !in_array('administrator', $user->roles)) {
-		drupal_set_message('You have reached an inactive or invalid Pick\'em Contest', 'error');
-		drupal_goto('<front>');
+	// do we show the edit controls (SELECT elements and BUTTON elements)
+	$showEditControls = !(($user->pickems === FALSE || !array_key_exists($pickem->pid, $user->pickems)) && !in_array('administrator', $user->roles));
+	$showEditControls = $showEditControls &&
+		!(($user->pickems === FALSE || !array_key_exists($pickem->pid, $user->pickems)) && !in_array('administrator', $user->roles));
+	
+	#if (($user->pickems === FALSE || !array_key_exists($pickem->pid, $user->pickems)) && !in_array('administrator', $user->roles)) {
+	#	drupal_set_message('You have reached an inactive or invalid Pick\'em Contest', 'error');
+	#	drupal_goto('<front>');
+	#}
+	
+	if ($week > $pickem->currentWeek()) {
+		drupal_set_message('That week is not ready for public viewing, yet.');
+		drupal_goto(sprintf('pickem/%s/slate', $pickem->currentWeek()));
 	}
 	
 	$pickem_player = $pickem->getPlayer($user->uid);
@@ -155,6 +167,12 @@ function pickem_pickem_slate_form($form, &$form_state, $pickem, $week = NULL) {
 	#dpm(array('week_slate' => $week_slate, 'pickem' => $pickem, 'player' => $pickem_player));
 	#dpm($week_slate);
 
+	######### DEFAULT PICK TEAM value #########
+	# This section establishes the default pick selection
+	# when a player (user) has yet to make picks.
+	#
+	# If the user has established a default in his/her user profile
+	# then use it.  Otherwise, use the pickem's default 
 	$pickem_wrapper = entity_metadata_wrapper('pickem', $pickem);
 	$max_bye_weeks_allowed = $pickem_wrapper->max_bye_weeks_allowed->value();
 	$pick_default_pickem = $pickem_wrapper->pick_default->value();
@@ -168,6 +186,7 @@ function pickem_pickem_slate_form($form, &$form_state, $pickem, $week = NULL) {
 	else {
 		$pick_default = $pick_default_pickem;
 	}
+	######### END DEFAULT PICK TEAM value #########
 	
 	if (is_null($pickem_player)) {
 		// prompt the player to enter settings.
@@ -178,13 +197,6 @@ function pickem_pickem_slate_form($form, &$form_state, $pickem, $week = NULL) {
 	}
 	$form_state['week'] = $week;
 	
-	// ========= LOAD CACHE DATA ==========
-	$cache_key = sprintf('picks.%s', $user->uid);
-	$cache_picks = NULL;
-	if ($cache = cache_get($cache_key)) {
-		$cache_picks = $cache->data;
-	}
-	#dpm($cache_picks);
 	
 	// Get the event pickem slate for this $week
 	// This will be an array of PickemSlate instances that will be 
@@ -199,51 +211,7 @@ function pickem_pickem_slate_form($form, &$form_state, $pickem, $week = NULL) {
 		return $form;
 	}
 
-	// TODO - I think it'll be best to empty the user's pick cache here.
-	// _pickem_clear_cache($user->uid);
-
 	$target_team_name = '';
-	/*
-	foreach ($upcomingSlate as $slid => $event) {
-		if (!isset($event->picks[$user->uid])) {
-			$pkid = 'new';
-			// CURRENTLY not supporting 'topranked'
-			if ($pick_default == 'hometeam') {
-				$target_team_name = $event->sportsEvent->host_team_name;
-			}
-			else {
-				$target_team_name = $event->sportsEvent->visiting_team_name;
-			}
-		}
-		else {
-			$pkid = $event->picks[$user->uid]->pkid;
-			$target_team_name = $event->picks[$user->uid]->pick_team_name;
-		}
-		_pickem_cache_pick($pickem, $slid, $week, $event->event_entity_id, $event->event_entity_type, 'new', $target_team_name);
-	}
-	*/
-	/*
-	if (empty($cache_picks) && $pickem->userNeedsProvisioning($user->uid, $week)) {
-
-		foreach ($upcomingSlate as $slid => $event) {
-			// CURRENTLY not supporting 'topranked'
-			if ($pick_default == 'hometeam') {
-				$target_team_name = $event->sportsEvent->host_team_name;
-			}
-			else {
-				$target_team_name = $event->sportsEvent->visiting_team_name;
-			}
-			_pickem_cache_pick($pickem, $slid, $week, $event->event_entity_id, $event->event_entity_type, 'new', $target_team_name);
-		}
-		
-		//$form['provisioning-needed'] = array(
-		//	'#theme' => 'modal-provisioning-needed',
-		//	'#pick_default' => $pick_default,
-		//);
-		//$js_settings['provisioningNeeded'] = true;
-		//$js_settings['provisioning_path'] = sprintf("pickem/%s/provision-slate/%s", $pickem->pid, $week);
-	}		
-	*/
 
 	// TODO load existing picks from the database
 	
@@ -253,16 +221,41 @@ function pickem_pickem_slate_form($form, &$form_state, $pickem, $week = NULL) {
 	);
 	
 	# =========== BUILD THE FORM HERE ==============
-	$form['notes'] = array(
-		'#theme' => 'pickem-form-notes',
-	);
+	//$form['notes'] = array(
+	//	'#theme' => 'pickem-form-notes',
+	//);
 	$form_state['pickem'] = $pickem;
+	
+	$timeInQuestion = time();
+	
+	#$fakeTime = mktime(8, 30, 0, 8, 30, 2014);
+	#$timeInQuestion = $fakeTime;
+	#$form_state['storage']['faketime'] = $fakeTime;
+	#$form['fakedate'] = array(
+	#	'#type' => 'container',
+	#	'#attributes' => array(
+	#		'class' => array('alert', 'alert-info'),
+	#	),
+	#);
+	#$form['fakedate']['text'] = array(
+	#	'#type' => 'markup',
+	#	'#markup' => t('Simulating the Pickem Slate with a date of: ') . '<br /><strong>' . t(date('r', $fakeTime)) . '</strong>',
+	#);
+	
+	$form['user-settings'] = array(
+		'#type' => 'container',
+	);
+	$form['user-settings']['link'] = array(
+		'#type' => 'markup',
+		'#markup' => sprintf("<a class='btn btn-default' href=\"/user/%s/edit\"><span>Change Your Default Pick/Selection Setting</span></a><br />", $user->uid),
+	);
 	$form['events']['#tree'] = TRUE;
 
 	$form_state['storage']['events'] = array();
+	
 	foreach ($upcomingSlate as $slate_id => $event) {
 		// TODO convert 'pick' into an entity-based object, then..
-		$pick = $event->load_pick_for_user($pickem_player->uid);
+		$pick = $event->load_pick_for_user($user->uid);
 		$pkid = isset($pick->pkid) ? $pick->pkid : 'new';
 		$objid = $event->event_entity_id;
 		$objtype = $event->event_entity_type;
@@ -277,7 +270,7 @@ function pickem_pickem_slate_form($form, &$form_state, $pickem, $week = NULL) {
 		);
 		$form['events'][$slate_id]['slate_event']['event_title'] = array(
 			'#type' => 'item',
-			'#markup' => sprintf('<div class="h4">%s<br /><small class="hidden-xs">%s</small></div>', $event->displayTitle(), $event->eventDate('long')),
+			'#markup' => sprintf('<div class="h4">%s<br /><small class="hidden-xs">%s</small></div>', $event->displayTitle(), $event->eventDate('sportsevent_date_medium')),
 			'#attributes' => array(
 				'pid' => '',
 			),
@@ -296,18 +289,35 @@ function pickem_pickem_slate_form($form, &$form_state, $pickem, $week = NULL) {
 		 * select the appropriate school and update cache for user's pick
 		 */
 		$opponents = array();
-		foreach ($event->opponents() as $designation => $opponent) {
-			$opponents[$opponent->name] = $opponent->displaytitle;
+		if ($event->completed()) {
+			// display the sports event results (who won)
+			$opponents['result'] = $event->eventResult();
+		} else {
+			foreach ($event->opponents() as $designation => $opponent) {
+				$opponents[$opponent->name] = $opponent->displaytitle;
+			}
 		}
-				
+		
+		# ask the PickemSlate controller about the "locked" status of the Slate Event
+		$pickIsLocked = !(entity_get_controller('pickem_slate')->eventCanAcceptPicks( $event, $timeInQuestion, $week ));
+		$pickCutoffTime = !(entity_get_controller('pickem_slate')->cutoffTimeForPick( $event, $week ));
+
+		// SELECT element for the pick
 		$form['events'][$slate_id]['slate_event']['pick_team_name'] = array(
 			'#type' => 'select',
 			'#options' => $opponents,
-			'#empty_value' => 'none',
+			'#description' => $pickIsLocked ? t('This pick would be locked in a real time scenario') : '',
+			'#disabled' => $pickIsLocked,
+			//'#disabled' => !$showEditControls || $pickIsLocked,
 		);
+		$form_state['storage']['events'][$slate_id] = $event;
+		$form_state['storage']['pick-cutoff-time'][$slate_id] = $pickCutoffTime;
+		
+		if (!$event->completed()) {
+			$form['events'][$slate_id]['slate_event']['pick_team_name']['#empty_value'] = 'none';
+		}
 		if (($pick_team_name = $event->pick_team_name($user->uid)) != '') {
 			$form['events'][$slate_id]['slate_event']['pick_team_name']['#default_value'] = $pick_team_name;
-			$form_state['storage']['events'][$slate_id] = $event;
 		} else {
 			// CURRENTLY not supporting 'topranked'
 			if ($pick_default == 'hometeam') {
@@ -318,72 +328,52 @@ function pickem_pickem_slate_form($form, &$form_state, $pickem, $week = NULL) {
 			}
 			$form['events'][$slate_id]['slate_event']['pick_team_name']['#default_value'] = $target_team_name;
 		}
-		/*
-		foreach ($event->opponents() as $designation => $opponent) {
-			$form['events'][$objid]['slate_event']['pick_team_name'][$opponent->name] = array(
-				'#type' => 'button',
-				'#value' => t(sprintf("%s", $opponent->displaytitle)),
-				'#attributes' => array(
-					'class' => array('btn', 'btn-sm', 'btn-block'),
-					'pkid' => $pkid,
-				),
-				'#name' => sprintf('slate-op-%s-%s', $objid, $opponent->name),
-				'#pkid' => $pkid,
-				'#objid' => $objid,
-				'#objtype' => $objtype,
-				'#slid' => $slate_id,
-				'#team_name' => $opponent->name,
-				'#ajax' => array(
-					'callback' => 'pickem_pick_team_name',
-					'method' => 'replace',
-					'wrapper' => 'slate-event-wrapper-' . $objid,
-					#'wrapper' => 'edit-debugme',
-					'progress' => array('type' => 'throbber', 'message' => t('Please wait...')),
-				),
-			);
-			$addButtonClass = 'btn-default';
-			if ($opponent->name == $event->pick_team_name($user->uid)) {
-				$addButtonClass = 'btn-info';
-			}
-			else {
-				if ($cache_picks) {
-					if (isset($cache_picks[$pkid])) {
-						if ($pkid == 'new') {
-							dpm($pkid);
-							dpm($objid);
-							// each key in 'new' is a game/tourney/series id
-							$addButtonClass = isset($cache_picks[$pkid][$objid]) 
-								&& $cache_picks[$pkid][$objid]->pick_team_name == $opponent->name 
-								? 'btn-info' 
-								: 'btn-default';
-						}
-						else {
-							$addButtonClass = 'btn-info';
-							$form['events'][$objid]['slate_event']['#attributes']['class'][] = 'bg-warning';
-						}
-					}
-				}
-			}
-			$form['events'][$objid]['slate_event']['pick_team_name'][$opponent->name]['#attributes']['class'][] = $addButtonClass;
-		}
-		*/
+		// END SELECT for the pick
+		
+		// BUTTON for "adding comments"
+		$form['events'][$slate_id]['slate_event']['show-pick-stats']['button'] = array(
+			'#theme' => 'bs-modal-trigger',
+			'#data_target' => '.slate-pick-stats',
+			'#btn_display_class' => 'btn-info',
+			'#target_entity_id' => $slate_id,
+			'#pickem_id' => $pickem->pid,
+		);
 	}
+
+	$form['events']['slate-pick-stats']['modal'] = array(
+		'#theme' => 'modal-pick-stats',
+	);
+
 	# ============= ACTION BUTTONS ==============
 	
 	$form['actions'] = array(
 		'#type' => 'actions'
 	);
+	if ($user->pickems === FALSE) {
+		// add a "Join" button
+		$form['actions']['join-pickem'] = array(
+			'#type' => 'submit',
+			'#pickem' => $pickem,
+			'#value' => t('Join This Pickem'),
+			'#attributes' => array(
+				'class' => array('btn','btn-warning'),
+			),
+		);
+		
+	}
 	$form['actions']['finalizepicks'] = array(
 		'#type' => 'submit',
 		'#value' => t('Submit Picks'),
 		'#attributes' => array(
 			'class' => array('btn','btn-primary'),
-			'id' => 'finalize-the-picks',
+			'id' => 'submit-the-picks',
 		),
+		'#disabled' => !$showEditControls,
 	);
 	$form['actions']['clearpicks'] = array(
 		'#type' => 'submit',
 		'#value' => t('Clear/Reset Picks'),
+		'#disabled' => !$showEditControls,
 		'#attributes' => array(
 			'class' => array('btn','btn-default'),
 		),
@@ -392,7 +382,25 @@ function pickem_pickem_slate_form($form, &$form_state, $pickem, $week = NULL) {
 		'#type' => 'hidden',
 		'#value' => $pickem->pid,
 	);
+	$form['submittingModal'] = array(
+		'#type' => 'markup',
+		'#markup' => theme('submitting-picks', array()),
+	);
+	
+	# finally, return the form for display
 	return $form;
+}
+
+/**
+ * Validation callback for the slate form
+ */
+function pickem_pickem_slate_form_validate($form, &$form_state) {
+	// get the current time
+	$time = time();	
+	if (isset($form_state['storage']['faketime'])) {
+		$time = $form_state['storage']['faketime'];
+	}
+	
 }
 
 /**
@@ -407,28 +415,44 @@ function pickem_pickem_slate_form_submit($form, &$form_state) {
 	// store to the database
 	// reset the cache.
 
+	if ($form_state['values']['op'] == 'Join This Pickem') {
+		$clickedButton = $form_state['clicked_button'];
+		drupal_goto(sprintf('pickem/%s/join', $clickedButton['#pickem']->pid));
+	}
+	
 	if ($form_state['values']['op'] == 'Clear/Reset Picks') {
 		return;
 	}
 	
-	dpm($form_state['values']['events']);
+	//dpm($form_state['values']['events']);
 	$events = $form_state['values']['events'];
 	foreach ($events as $slate_id => $event_element) {
-		if (!array_key_exists($slate_id, $form_state['storage']['events'])) {
+		$slateEvent = $form_state['storage']['events'][$slate_id];
+
+		if (!isset($slateEvent->picks[$user->uid])) {
 			# TODO create new entity for this pick and save it
 			$pick = entity_create('pick', 
 				array(
 					'slid' => $slate_id, 
 					'pick_team_name' => $event_element['slate_event']['pick_team_name'],
+					'playername' => $user->name,
 					'uid' => $user->uid,
 				)
 			);
 			if ($pick->save() !== FALSE) {
 				drupal_set_message('Pick saved');
 			}
+		} else {
+			// update this user's pick
+			$pick = $form_state['storage']['events'][$slate_id]->picks[$user->uid];
+			if ($pick->pick_team_name != $event_element['slate_event']['pick_team_name']) {
+				$pick->pick_team_name = $event_element['slate_event']['pick_team_name'];
+				if ($pick->save() !== FALSE) {
+					drupal_set_message(sprintf("Updated your pick for %s to '%s'", $slateEvent->sportsEvent->displayTitle(), $slateEvent->{$pick->pick_team_name}));
+				}
+			}
 		}
 	}
-	dpm($form_state['storage']['events']);
 	
 	// the picks are in the cache for this $user
 	//dpm()

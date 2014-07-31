@@ -54,6 +54,13 @@ function sportsevent_schema() {
 				),
 			),
 		),
+		#'sportsevent_result' => array(
+		#	'fields' => array(
+		#		'eid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE,),
+		#		'winning_team_name' => array('type' => 'varchar', 'length' => 35, 'not null' => TRUE,),
+		#		'result_title' => array('type' => 'varchar', 'length' => 35, 'not null' => TRUE,),
+		#	),
+		#),
 		'tourney' => array(
 			'fields' => array(
 				'tid' => array('type' => 'serial','unsigned' => TRUE, 'not null' => TRUE,),

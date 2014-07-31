@@ -54,13 +54,14 @@ class Pickem extends Entity {
 			->execute();
 			
 		$this->slate_weeks = array();
+
 		foreach ($weeks as $week) {
-			
 			$query = new EntityFieldQuery();
 			$query
 				->entityCondition('entity_type', 'pickem_slate', '=')
 				->propertyCondition('pid', $this->pid, '=')
-				->propertyCondition('week', $week->week, '=');
+				->propertyCondition('week', $week->week, '=')
+				->propertyOrderBy('slate_date', 'ASC');
 				
 			$result = $query->execute();
 			if (!empty($result)) {
@@ -152,6 +153,29 @@ class PickemAPIController extends EntityAPIController {
 		$entity->pickem_id = $pickem_id;
 		$entity->save();		
 	}
+	
+	public function processSportsEventResults($pickem, $sportsEvent) {
+		// TODO find the PickemSlate entities attached to the sportsevent->eid value
+		$conditions = array('pid' => $pickem->pid, 'event_entity_id' => $sportsEvent->eid, 'event_entity_type' => 'sportsevent');
+
+		$pickemSlate = entity_load('pickem_slate', FALSE, $conditions, TRUE);
+		$pickemSlate = reset($pickemSlate);
+
+		$response = array('correct' => array(), 'incorrect' => array(), 'processed' => 0,);
+		
+		if (count($pickemSlate->picks)) {
+			foreach ($pickemSlate->picks as $player_uid => $pick) {
+				$pick->correct = ($sportsEvent->winning_team_name) == $pick->pick_team_name ? 'Y' : 'N';
+				if ($pick->correct == 'Y') {
+					$response['correct'][] = sprintf("%s correctly picked winner (%s)", $pick->playername, $pick->pick_team_name);
+				} else {
+					$response['incorrect'][] = sprintf("%s incorrectly picked winner (%s)", $pick->playername, $pick->pick_team_name);
+				}
+				$response['processed']++;
+			}
+		}
+		return $response;	// return the number of PickemSlate -> picks processed.
+	}
 }
 
 class PickemSlate extends Entity {
@@ -167,14 +191,23 @@ class PickemSlate extends Entity {
 	  $result = $query->execute();
 	  
 		$this->picks = array();
+		$this->picks_by_team = array();
+		
 		if (!empty($result)) {
 		  $pkids = array();
 		  foreach($result['pick'] as $record) {
 		    $pkids[] = $record->pkid;
 		  }
 		  $picks = entity_load('pick', $pkids);
+			
 			foreach ($picks as $pkid => $p) {
-				$this->picks[$pkid->uid] = $p;
+				$this->picks[$p->uid] = $p;
+				
+				if (!array_key_exists($p->pick_team_name, $this->picks_by_team)) {
+					$this->picks_by_team[$p->pick_team_name] = array();
+				}
+				$this->picks_by_team[$p->pick_team_name][] = $p->playername;
+								
 			}
 		
 			//$pickem_slate = entity_load('pickem_slate', FALSE, array('pid' => $this->pid));
@@ -185,7 +218,15 @@ class PickemSlate extends Entity {
 		if (!empty($this->event_entity_type)) {
 			$sportsevents = entity_load($this->event_entity_type, array($this->event_entity_id));
 			$this->sportsEvent = reset($sportsevents);
+			
+			// provide direct access to the opponents (in this case, the host and visitor)
+			$host_key = $this->sportsEvent->host_team->name;
+			$this->$host_key = $this->sportsEvent->host_team->displaytitle;
+			$visitor_key = $this->sportsEvent->visiting_team->name;
+			$this->$visitor_key = $this->sportsEvent->visiting_team->displaytitle;
 		}
+		
+		$this->comments = entity_load('pick_comment', FALSE, array('slid' => $this->slid), TRUE);
 		#$this->sportEvent = reset($games);
 		
 		#$pickController = entity_get_controller('pick');
@@ -201,10 +242,19 @@ class PickemSlate extends Entity {
 		return FALSE;
 	}
 	
+	public function pickCount() {
+		return count($this->picks);
+	}
+	
+	public function completed() {
+		return $this->sportsEvent->completed();
+	}
 	public function getSportsEvent() {
 		return $this->sportsEvent;
 	}
-	
+	public function eventResult() {
+		return $this->sportsEvent->eventResult();
+	}
 	public function displayTitle() {
 		return $this->sportsEvent->displayTitle();
 	}
@@ -225,7 +275,18 @@ class PickemSlate extends Entity {
 		if (empty($this->picks)) {
 			return '';
 		}
+		if (!isset($this->picks[$uid])) {
+			return '';
+		}
 		return $this->picks[$uid]->pick_team_name;
+	}
+	
+	public function picks_by_team() {
+		
+	}
+	
+	public function comments() {
+		return $this->comments;
 	}
 }
 
@@ -237,7 +298,76 @@ class PickemSlateController extends EntityAPIController {
 	
 	public function load($ids = array(), $conditions = array()) {
 		return parent::load($ids, $conditions);
-	}	
+	}
+	
+	public function cutoffTimeForPick($slateEvent, $pickem_week) {
+		
+		// DEFAULT IMPLEMENTATION based on college football pickem culture
+		$slate_date = (int) $slateEvent->slate_date;
+		
+		$dayOfWeek = date('D', $slate_date);
+		if (in_array($dayOfWeek, array('Thu', 'Fri'))) {
+			return $slate_date - (15 * 60);
+		} else {
+			$saturdayAtNoon = mktime(12, 0, 0, 
+				date('n', $slate_date), 
+				date('j', $slate_date), 
+				date('Y', $slate_date)
+				);
+			if ($dayOfWeek == 'Sun') {
+				$saturdayAtNoon -= 86400;
+			}
+			if ($dayOfWeek == 'Mon') {
+				$saturdayAtNoon -= (86400 * 2);
+			}
+			return $saturdayAtNoon - (15 * 60);
+		}
+		
+		return FALSE;
+	}
+	
+	public function eventCanAcceptPicks($slateEvent, $time, $pickem_week) {
+		if (is_null($time)) {
+			$time = time();
+		}
+		
+		if ($pickem_week < $slateEvent->week) {
+			return FALSE;
+		}
+		
+		if ($slateEvent->getSportsEvent()->completed()) {
+			return FALSE;
+		}
+		
+		// DEFAULT IMPLEMENTATION based on college football pickem culture
+		$slate_date = (int) $slateEvent->slate_date;
+		
+		if ($time > $slate_date) {
+			return FALSE;
+		}
+		
+		$dayOfWeek = date('D', $slate_date);
+		if (in_array($dayOfWeek, array('Thu', 'Fri'))) {
+			$delta = $slate_date - ($time + (15 * 60));
+			return $delta > 0;
+		} else {
+			$saturdayAtNoon = mktime(12, 0, 0, 
+				date('n', $slate_date), 
+				date('j', $slate_date), 
+				date('Y', $slate_date)
+				);
+			if ($dayOfWeek == 'Sun') {
+				$saturdayAtNoon -= 86400;
+			}
+			if ($dayOfWeek == 'Mon') {
+				$saturdayAtNoon -= (86400 * 2);
+			}
+			$delta = $saturdayAtNoon;
+			return $delta > 0;
+		}
+		
+		return TRUE;
+	}
 }
 
 class Pick 
@@ -245,6 +375,8 @@ class Pick
 
 	public function __construct($values = array()) {
 		parent::__construct($values, 'pick');
+		
+		// TODO load comments
 	}
 	
 	public function pickedTeam() {
@@ -258,7 +390,7 @@ class Pick
 	}
 
 }
-	
+
 class PickUIController extends EntityDefaultUIController {
 	
 }
@@ -271,6 +403,28 @@ class PickController extends EntityAPIController {
 	
 }
 
+/**
+ * PickComment class
+ */
+class PickComment
+	extends Entity {
+	
+	public function __construct($values = array()) {
+		parent::__construct($values, 'pick_comment');
+	}		
+}
+
+class PickCommentUIController extends EntityDefaultUIController {
+	
+}
+
+class PickCommentController extends EntityAPIController {
+	
+	public function load($ids = array(), $conditions = array()) {
+		return parent::load($ids, $conditions);
+	}	
+}	
+	
 /**
  * PickemPlayer class
  */

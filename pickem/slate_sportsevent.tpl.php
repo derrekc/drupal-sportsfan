@@ -5,7 +5,10 @@
 	</div>
 	<div class="hidden-xs col-sm-4"><?php print render($slate_event['event_title']); ?></div>
 	<div class="col-xs-4 visible-xs"><?php print render($slate_event['event_title_mobile']); ?></div>
-	<div class="col-xs-8 col-md-6">
+	<div class="col-xs-6 col-md-5">
 		<?php print render($slate_event['pick_team_name']); ?>
+	</div>
+	<div class="col-xs-1 col-md-1">
+		<?php print render($slate_event['show-pick-stats']); ?>
 	</div>
 </div>

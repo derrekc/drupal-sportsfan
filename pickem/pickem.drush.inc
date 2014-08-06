@@ -64,6 +64,11 @@ function pickem_drush_command() {
 		'aliases' => array('expsch'),
 		'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
 	);
+	$items['run-batch'] = array(
+		'callback' => 'drush_pickem_run_batch',
+		'aliases' => array('prun'),
+		'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
+	);
 	return $items;
 }
 
@@ -182,6 +187,26 @@ function pickem_import_pickem_google_data() {
 					}
 				}
 
+				drush_print("");
+				if (drush_confirm('Add players from Drupal user table to ' . $entity->title . '...?')) {
+					$controller = entity_get_controller('pickem');
+					$query = new EntityFieldQuery();
+					$query->entityCondition('entity_type', 'user')
+						->propertyCondition('uid', 1, '>');
+					$users = $query->execute();
+					if (isset($users['user'])) {
+						$uids = array_keys($users['user']);
+						foreach($uids as $uid) {
+							$u = user_load($uid);
+							try {
+								$controller->addPlayer($uid, $u->name, $entity->pid);
+								drush_log(sprintf("added %s to the pickem", $u->name), 'success');
+							} catch (Exception $addPlayerExc) {
+								drush_log($addPlayerExc->getMessage(), 'error');
+							}
+						}
+					}
+				}
 				// create the slate of games for the upcoming season?
 				if ((!empty($entity->autoschool) || !empty($entity->autoconference)) && 
 					drush_confirm('Add games to this slate based on values in \'autoconference\' and/or \'autoschool\'...?')) {
@@ -231,6 +256,45 @@ function pickem_import_pickem_google_data() {
 	}
   drush_log('Import complete', 'success');
 }
+
+function drush_pickem_run_batch() {
+	$batch = array(
+		'operations' => array(
+			array('drush_pickem_run_batch_op_1', array('Hello World')),
+			array('drush_pickem_run_batch_op_2', array('Thank you for your participation!')),
+		),
+		'file' => drupal_get_path('module', 'pickem') . '/pickem.drush.inc',
+		'finished' => 'drush_pickem_batch_finished',
+	);
+	batch_set($batch);
+	$batch =& batch_get();
+	$batch['progressive'] = FALSE;
+	
+	drush_backend_batch_process();
+}
+
+function drush_pickem_run_batch_op_1($str, &$context) {
+	if (empty($context['sandbox'])) {
+		$context['sandbox']['progress'] = 0;
+		$context['sandbox']['max'] = 1;
+	}
+	$context['message'] = dt('Running "op_1"...');
+	drush_log($str, 'ok');
+	$context['finished'] = 1;
+}
+
+function drush_pickem_run_batch_op_2($str, &$context) {
+	if (empty($context['sandbox'])) {
+		$context['sandbox']['progress'] = 0;
+		$context['sandbox']['max'] = 1;
+	}
+	$context['message'] = dt('Running "op_2"...');
+	drush_log($str, 'ok');
+	$context['finished'] = 1;
+}
+
+############ LEGACY FUNCTIONS #############
+###########################################
 
 function drush_pickem_create_standings($target_week) {
 	$num_affected = db_delete('standings')->execute();

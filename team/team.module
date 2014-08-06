@@ -10,7 +10,7 @@ function team_entity_info() {
 			'label callback' => 'team_label_callback',
 			'plural label' => t('Teams'),
 			'entity class' => 'Team',
-			'controller class' => 'EntityAPIController',
+			'controller class' => 'TeamController',
 			'base table' => 'team',
 			'fieldable' => TRUE,
 			'entity keys' => array(

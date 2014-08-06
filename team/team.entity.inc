@@ -25,6 +25,16 @@ class TeamController extends EntityAPIController {
 		return parent::load($ids, $conditions);
 	}	
 	
+	public function addSportsbookNameToTeam($team, $sbname) {
+		$current = explode(',', $team->sportsbook_name);
+		if (!in_array($sbname, $current)) {
+			$current[] = $sbname;
+			$team->sportsbook_name = implode(',', $current);
+			$team->save();
+		} else {
+			throw new Exception($sbname . ' already exists for ' . $team->displaytitle);
+		}
+	}
 }
 		
 /**

@@ -21,7 +21,55 @@ function team_drush_command() {
     'description' => dt('Import Conferences from Google Spreadsheet.'),
 		'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
   );
+	$items['add-sbname'] = array(
+		'callback' => 'team_add_sportsbook_name',
+		'arguments' => array(
+			'teamname' => 'Team name to lookup',
+			'sportsbook_name' => 'Sportsbook name to add',
+		),
+		'required-arguments' => 2,
+		'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
+	);
+	$items['sbname-list'] = array(
+		'callback' => 'team_sportsbook_names',
+		'arguments' => array(
+			'teamname' => 'Team name to lookup',
+		),
+		'required-arguments' => 1,
+		'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
+	);
   return $items;
+}
+
+/**
+ * Drush callback
+ */
+function team_add_sportsbook_name($teamname, $sportsbook_name) {
+	$team = team_load_by_name($teamname);
+	if (!$team) {
+		drush_log(sprintf("Could not load the team, '%s'!", $teamname), 'error');
+		return;
+	}
+	$controller = entity_get_controller('team');
+	try {
+		$controller->addSportsbookNameToTeam($team, $sportsbook_name);
+		drush_log($sportsbook_name . ' added successfully to ' . $teamname . '\'s list.', 'success');
+	} catch (Exception $addException) {
+		drush_log($addException->getMessage(), 'error');
+	}
+}
+
+/**
+ * Drush callback
+ */
+function team_sportsbook_names($teamname) {
+	$team = team_load_by_name($teamname);
+	if (!$team) {
+		drush_log(sprintf("Could not load the team, '%s'!", $teamname), 'error');
+		return;
+	}
+	$current = explode(',', $team->sportsbook_name);
+	drush_print('Known Sportsbook aliases: ' . implode(', ', $current));
 }
 
 /**

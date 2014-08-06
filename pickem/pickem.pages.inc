@@ -71,9 +71,9 @@ function pickem_pickem_slate($pickem) {
 	
 	$header = array(
 		array('data' => t('Week'), 'class' => array('text-center')),
-		array('data' => t('Number of Games'), 'class' => array('text-center')),
-		array('data' => t('Correct'), 'class' => array('text-center')),
-		array('data' => t('Wrong'), 'class' => array('text-center')),
+		array('data' => t('# Games'), 'class' => array('text-center')),
+		array('data' => '<span title="Correct" class="glyphicon glyphicon-thumbs-up"></span>', 'class' => array('text-center')),
+		array('data' => '<span title="Incorrect" class="glyphicon glyphicon-thumbs-down"></span>', 'class' => array('text-center')),
 		array('data' => t('Place'), 'class' => array('text-center')),
 		array('data' => t('Actions')),
 	);
@@ -91,19 +91,41 @@ function pickem_pickem_slate($pickem) {
 			),
 			'class' => array($row_class)
 		);
-		if ($week == $currentWeek) {
-			$row['data'][] = array(
-				'data' => l(
-					t('Make Picks'), 
-					sprintf('pickem/%s/slate/%s', $pickem->pid, $week),
-					array('attributes' => array('class' => array('btn', 'btn-primary', 'btn-xs')))
-				)
-			);
+		
+		$linkText = '';
+		$btnClasses = array();
+		if ($pickem->slateWeekIsOpen($week)) {	// was '$week == $currentWeek'
+			$linkText = t('Make Picks');
+			$btnClasses = array('btn', 'btn-primary', 'btn-xs');
+			//$row['data'][] = array(
+			//	'data' => l(
+			//		t('Make Picks'), 
+			//		sprintf('pickem/%s/slate/%s', $pickem->pid, $week),
+			//		array('attributes' => array('class' => array('btn', 'btn-primary', 'btn-xs')))
+			//	)
+			//);
 		}
 		else {
-			$row['data'][] = '';
+			$linkText = t('See Games');
+			$btnClasses = array('btn', 'btn-info', 'btn-xs');
 		}
+		$row['data'][] = array(
+			'data' => l(
+				$linkText, 
+				sprintf('pickem/%s/slate/%s', $pickem->pid, $week),
+				array('attributes' => array('class' => $btnClasses))
+			)
+		);
 		$rows[] = $row;
+		unset($linkText);
+		unset($btnClasses);
+		//$row = array(
+		//	'data' => array(
+		//		array('data' => 'Could use this for the pick form...?', 'colspan' => 6)
+		//	),
+		//	'no_striping' => TRUE,
+		//);
+		//$rows[] = $row;
 	}
 	
 	$page['slate'] = array(
@@ -156,12 +178,13 @@ function pickem_pickem_slate_form($form, &$form_state, $pickem, $week = NULL) {
 	#	drupal_goto('<front>');
 	#}
 	
-	if ($week > $pickem->currentWeek()) {
-		drupal_set_message('That week is not ready for public viewing, yet.');
-		drupal_goto(sprintf('pickem/%s/slate', $pickem->currentWeek()));
-	}
+	//if ($week > $pickem->currentWeek()) {
+	//	drupal_set_message('That week is not ready for public viewing, yet.');
+	//	drupal_goto(sprintf('pickem/%s/slate', $pickem->currentWeek()));
+	//}
 	
 	$pickem_player = $pickem->getPlayer($user->uid);
+	$form_state['storage']['pickem_player'] = $pickem_player;
 	$week_slate = $pickem->getPickemSlateForWeek($week);
 	
 	#dpm(array('week_slate' => $week_slate, 'pickem' => $pickem, 'player' => $pickem_player));
@@ -249,6 +272,10 @@ function pickem_pickem_slate_form($form, &$form_state, $pickem, $week = NULL) {
 		'#type' => 'markup',
 		'#markup' => sprintf("<a class='btn btn-default' href=\"/user/%s/edit\"><span>Change Your Default Pick/Selection Setting</span></a><br />", $user->uid),
 	);
+	$form['betting-lines-disclaimer'] = array(
+		'#type' => 'markup',
+		'#markup' => '<p><strong><em>Note:</em></strong> - Betting lines are for display purposes only.  The picks are <strong>Straight Up</strong>.</p>',
+	);
 	$form['events']['#tree'] = TRUE;
 
 	$form_state['storage']['events'] = array();
@@ -270,7 +297,7 @@ function pickem_pickem_slate_form($form, &$form_state, $pickem, $week = NULL) {
 		);
 		$form['events'][$slate_id]['slate_event']['event_title'] = array(
 			'#type' => 'item',
-			'#markup' => sprintf('<div class="h4">%s<br /><small class="hidden-xs">%s</small></div>', $event->displayTitle(), $event->eventDate('sportsevent_date_medium')),
+			'#markup' => sprintf('<div class="h4">%s<br /><small class="hidden-xs">%s</small></div>', $event->displayTitleWithLines(), $event->eventDate('sportsevent_date_medium')),
 			'#attributes' => array(
 				'pid' => '',
 			),
@@ -302,42 +329,61 @@ function pickem_pickem_slate_form($form, &$form_state, $pickem, $week = NULL) {
 		$pickIsLocked = !(entity_get_controller('pickem_slate')->eventCanAcceptPicks( $event, $timeInQuestion, $week ));
 		$pickCutoffTime = !(entity_get_controller('pickem_slate')->cutoffTimeForPick( $event, $week ));
 
-		// SELECT element for the pick
-		$form['events'][$slate_id]['slate_event']['pick_team_name'] = array(
-			'#type' => 'select',
-			'#options' => $opponents,
-			'#description' => $pickIsLocked ? t('This pick would be locked in a real time scenario') : '',
-			'#disabled' => $pickIsLocked,
-			//'#disabled' => !$showEditControls || $pickIsLocked,
-		);
-		$form_state['storage']['events'][$slate_id] = $event;
-		$form_state['storage']['pick-cutoff-time'][$slate_id] = $pickCutoffTime;
+		$slateWeekIsOpen = $pickem->slateWeekIsOpen($week);
 		
-		if (!$event->completed()) {
-			$form['events'][$slate_id]['slate_event']['pick_team_name']['#empty_value'] = 'none';
-		}
-		if (($pick_team_name = $event->pick_team_name($user->uid)) != '') {
-			$form['events'][$slate_id]['slate_event']['pick_team_name']['#default_value'] = $pick_team_name;
+		################ PICK TEAM SELECT ELEMENT ##################
+		### Generate the element for the Pick Team (if the slate is open)
+		if ($slateWeekIsOpen) {
+			// SELECT element for the pick
+			$form['events'][$slate_id]['slate_event']['pick_team_name'] = array(
+				'#type' => 'select',
+				'#options' => $opponents,
+				'#description' => $pickIsLocked ? t('This pick would be locked in a real time scenario') : '',
+				'#disabled' => $pickIsLocked,
+				//'#disabled' => !$showEditControls || $pickIsLocked,
+			);
+			$form_state['storage']['events'][$slate_id] = $event;
+			$form_state['storage']['pick-cutoff-time'][$slate_id] = $pickCutoffTime;
+			
+			if (!$event->completed()) {
+				$form['events'][$slate_id]['slate_event']['pick_team_name']['#empty_value'] = '';
+				$form['events'][$slate_id]['slate_event']['pick_team_name']['#empty_option'] = 'Pick Your Team';
+			}
+			
+			if (($pick_team_name = $event->pick_team_name($user->uid)) != '') {
+				$form['events'][$slate_id]['slate_event']['pick_team_name']['#default_value'] = $pick_team_name;
+			} else {
+				
+				// DEPRECATED now that the "Open Week" batch job provisions the picks.
+				
+				// CURRENTLY not supporting 'topranked'
+				#if ($pick_default == 'hometeam') {
+				#	$target_team_name = $event->sportsEvent->host_team_name;
+				#}
+				#else {
+				#	$target_team_name = $event->sportsEvent->visiting_team_name;
+				#}
+				#$form['events'][$slate_id]['slate_event']['pick_team_name']['#default_value'] = $target_team_name;
+			}
+			// END SELECT for the pick
 		} else {
-			// CURRENTLY not supporting 'topranked'
-			if ($pick_default == 'hometeam') {
-				$target_team_name = $event->sportsEvent->host_team_name;
-			}
-			else {
-				$target_team_name = $event->sportsEvent->visiting_team_name;
-			}
-			$form['events'][$slate_id]['slate_event']['pick_team_name']['#default_value'] = $target_team_name;
+			$form['events'][$slate_id]['slate_event']['pick_team_name'] = array(
+				'#type' => 'item',
+			);
+			
 		}
-		// END SELECT for the pick
+		############### END PICK TEAM ELEMENT
 		
-		// BUTTON for "adding comments"
-		$form['events'][$slate_id]['slate_event']['show-pick-stats']['button'] = array(
-			'#theme' => 'bs-modal-trigger',
-			'#data_target' => '.slate-pick-stats',
-			'#btn_display_class' => 'btn-info',
-			'#target_entity_id' => $slate_id,
-			'#pickem_id' => $pickem->pid,
-		);
+		// BUTTON for "pick stats"
+		if ($slateWeekIsOpen) {
+			$form['events'][$slate_id]['slate_event']['show-pick-stats']['button'] = array(
+				'#theme' => 'bs-modal-trigger',
+				'#data_target' => '.slate-pick-stats',
+				'#btn_display_class' => 'btn-info',
+				'#target_entity_id' => $slate_id,
+				'#pickem_id' => $pickem->pid,
+			);
+		}
 	}
 
 	$form['events']['slate-pick-stats']['modal'] = array(
@@ -361,23 +407,25 @@ function pickem_pickem_slate_form($form, &$form_state, $pickem, $week = NULL) {
 		);
 		
 	}
-	$form['actions']['finalizepicks'] = array(
-		'#type' => 'submit',
-		'#value' => t('Submit Picks'),
-		'#attributes' => array(
-			'class' => array('btn','btn-primary'),
-			'id' => 'submit-the-picks',
-		),
-		'#disabled' => !$showEditControls,
-	);
-	$form['actions']['clearpicks'] = array(
-		'#type' => 'submit',
-		'#value' => t('Clear/Reset Picks'),
-		'#disabled' => !$showEditControls,
-		'#attributes' => array(
-			'class' => array('btn','btn-default'),
-		),
-	);
+	if ($slateWeekIsOpen) {
+		$form['actions']['finalizepicks'] = array(
+			'#type' => 'submit',
+			'#value' => t('Submit Picks'),
+			'#attributes' => array(
+				'class' => array('btn','btn-primary'),
+				'id' => 'submit-the-picks',
+			),
+			'#disabled' => !$showEditControls,
+		);
+		$form['actions']['clearpicks'] = array(
+			'#type' => 'submit',
+			'#value' => t('Clear/Reset Picks'),
+			'#disabled' => !$showEditControls,
+			'#attributes' => array(
+				'class' => array('btn','btn-default'),
+			),
+		);
+	}
 	$form['pickem_id'] = array(
 		'#type' => 'hidden',
 		'#value' => $pickem->pid,
@@ -400,7 +448,8 @@ function pickem_pickem_slate_form_validate($form, &$form_state) {
 	if (isset($form_state['storage']['faketime'])) {
 		$time = $form_state['storage']['faketime'];
 	}
-	
+	//form_set_error(NULL, 'Make some changes, yo!');
+	//dpm($form_state['values']);
 }
 
 /**
@@ -425,6 +474,7 @@ function pickem_pickem_slate_form_submit($form, &$form_state) {
 	}
 	
 	//dpm($form_state['values']['events']);
+	$picks_processed = 0;
 	$events = $form_state['values']['events'];
 	foreach ($events as $slate_id => $event_element) {
 		$slateEvent = $form_state['storage']['events'][$slate_id];
@@ -441,6 +491,7 @@ function pickem_pickem_slate_form_submit($form, &$form_state) {
 			);
 			if ($pick->save() !== FALSE) {
 				drupal_set_message('Pick saved');
+				$picks_processed++;
 			}
 		} else {
 			// update this user's pick
@@ -449,11 +500,25 @@ function pickem_pickem_slate_form_submit($form, &$form_state) {
 				$pick->pick_team_name = $event_element['slate_event']['pick_team_name'];
 				if ($pick->save() !== FALSE) {
 					drupal_set_message(sprintf("Updated your pick for %s to '%s'", $slateEvent->sportsEvent->displayTitle(), $slateEvent->{$pick->pick_team_name}));
+					$picks_processed++;
 				}
 			}
 		}
 	}
-	
+
+	$week = $form_state['week'];
+		
+	if ($picks_processed) {
+		$pickem_player = $form_state['storage']['pickem_player'];
+		$pickem_player->player_data['madepicks'][$week] = TRUE;
+		$pickem_player->player_data['last_picksave'] = time();
+		$pickem_player->weeks_won = 0;
+		try {
+			entity_save('pickem_player', $pickem_player);
+		} catch(Exception $ex) {
+			drupal_set_message($ex->getMessage(), 'error');
+		}
+	}
 	// the picks are in the cache for this $user
 	//dpm()
 	#$cache_key = sprintf('picks.%s', $user->uid);

@@ -97,6 +97,10 @@ class Pickem extends Entity {
 		return $this->pickem_slate;
 	}
 	
+	public function slateWeekIsOpen($week) {
+		return strtoupper($this->slate_weeks[$week]->open) == 'Y';
+	}
+	
 	public function getPlayer($uid) {
 		if (empty($this->players)) {
 			return FALSE;
@@ -146,11 +150,20 @@ class PickemAPIController extends EntityAPIController {
 		return parent::load($ids, $conditions);
 	}	
 	
-	public function addPlayer($uid, $pickem_id) {
+	public function addPlayer($uid, $uname, $pickem_id) {
 		$bundle = 'pickem_player';
 		$entity = entity_create('pickem_player', array('type' => $bundle));
 		$entity->uid = $uid;
 		$entity->pickem_id = $pickem_id;
+		$entity->name = $uname;
+		$entity->player_data = serialize(
+			array(
+				'madepicks' => array(),
+				'savedpicks' => TRUE,
+				'bye_count' => 0,
+				'last_picksave' => time(),
+			)
+		);
 		$entity->save();		
 	}
 	
@@ -255,10 +268,15 @@ class PickemSlate extends Entity {
 	public function eventResult() {
 		return $this->sportsEvent->eventResult();
 	}
+	
 	public function displayTitle() {
 		return $this->sportsEvent->displayTitle();
 	}
-	
+		
+	public function displayTitleWithLines() {
+		return $this->sportsEvent->displayTitleWithLines();
+	}
+
 	public function displayTitleMobile() {
 		return $this->sportsEvent->displayTitleMobile();
 	}
@@ -430,14 +448,44 @@ class PickCommentController extends EntityAPIController {
  */
 class PickemPlayer 
 	extends Entity {
+
+	public function __construct($values = array()) {
+		parent::__construct($values, 'pickem_player');
+	}
 	
-	public function load($ids = array(), $conditions = array()) {
-		$player = parent::load($ids, $conditions);
-		$user = user_load(array($uid));
-		if (!empty($user)) {
-			$player->name = $user->name;
+	public function setUp() {
+		if ($this->player_data == NULL) {
+			$this->player_data = array(
+				'madepicks' => array(),
+				'savedpicks' => TRUE,
+				'bye_count' => 0,
+				'last_picksave' => time(),
+			);
+			return;
+			//$this->save();
 		}
-		return $player;
+		if (is_array($this->player_data)) {
+			return;
+		}
+		if ($this->player_data == 'Array') {
+			$this->player_data = array(
+				'madepicks' => array(),
+				'savedpicks' => TRUE,
+				'bye_count' => 0,
+				'last_picksave' => time(),
+			);
+			return;
+		}
+		try {
+			$this->player_data = unserialize($this->player_data);
+		} catch (Exception $playerDataException) {
+			$this->player_data = array(
+				'madepicks' => array(),
+				'savedpicks' => TRUE,
+				'bye_count' => 0,
+				'last_picksave' => time(),
+			);
+		}
 	}
 }
 	
@@ -446,7 +494,7 @@ class PickemPlayerUIController extends EntityDefaultUIController {
 }
 
 class PickemPlayerController extends EntityAPIController {
-	
+		
 	public function load($ids = array(), $conditions = array()) {
 		return parent::load($ids, $conditions);
 	}	

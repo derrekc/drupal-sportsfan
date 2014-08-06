@@ -31,6 +31,31 @@ function pickem_menu() {
 			'description' => 'Pickem Management',
 			'access arguments' => array('administer pickem entities'),
 		),
+		'admin/content/pickem/manage/%pickem/weeks' => array(
+			'title' => 'Manage Weeks',
+			'description' => 'Open or close Pickem weeks for user competition/interaction',
+			'access arguments' => array('administer pickem entities'),
+			'page callback' => 'pickem_admin_weeks_overview',
+			'page arguments' => array(4),
+			'file' => 'includes/pickem.admin.inc',
+			'type' => MENU_LOCAL_TASK,
+		),
+		'admin/content/pickem/manage/%pickem/open-week' => array(
+			'title' => 'Open Week for Play',
+			'access arguments' => array('administer pickem entities'),
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('pickem_admin_week_open_form', 4, 6),
+			'file' => 'includes/pickem.admin.inc',
+			'type' => MENU_LOCAL_TASK,
+		),
+		'admin/content/pickem/manage/%pickem/weeks/%/open' => array(
+			'title' => 'Open Week for Play',
+			'access arguments' => array('administer pickem entities'),
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('pickem_admin_week_open_form', 4, 6),
+			'file' => 'includes/pickem.admin.inc',
+			'type' => MENU_CALLBACK,
+		),
 		'admin/content/pickem/manage/%pickem/players' => array(
 			'title' => 'Manage Players',
 			'description' => 'Add and manage playes for this pickem',
@@ -40,7 +65,7 @@ function pickem_menu() {
 			'file' => 'includes/pickem.admin.inc',
 			'type' => MENU_LOCAL_TASK,
 		),
-		'admin/content/pickem/manage/%pickem/players/add/%' => array(
+		'admin/content/pickem/manage/%pickem/players/add' => array(
 			'title' => 'Manage Players',
 			'description' => 'Add and manage playes for this pickem',
 			'access arguments' => array('administer pickem entities'),
@@ -172,7 +197,7 @@ function pickem_entity_info() {
 			'load hook' => 'pickem_load',
 			'admin ui' => array(
 				'path' => 'admin/content/pickem',
-				#'controller class' => 'TeamUIController',
+				//'controller class' => 'TeamUIController',
 				'file' => 'includes/pickem.admin.inc',
 			),
 			'bundles' => array(
@@ -278,11 +303,13 @@ function pickem_access_callback() {
 function pickem_entity_load(&$entities, $type) {
 	if ($type == 'user') {
 		foreach ($entities as $user) {
+				if ($user->uid <= 1) { continue; }
 				$pickems = pickem_player_load_multiple(array($user->uid));
 				if ($pickems !== FALSE && !empty($pickems)) {
 					$user->pickems = array();
 					foreach ($pickems as $p) {
 						$user->pickems[$p->pickem_id] = TRUE;
+						$p->name = $user->name;
 					}
 				} else {
 					$user->pickems = FALSE;
@@ -846,7 +873,7 @@ function pickem_pickem_user_join_form_submit($form, &$form_state) {
 	
 	if ($values['op'] == 'Join') {
 		$controller = entity_get_controller('pickem');
-		$controller->addPlayer($user->uid, $pickem->pid);
+		$controller->addPlayer($user->uid, $user->name, $pickem->pid);
 
 		drupal_set_message(t('You have been added to :pickem', array(':pickem' => $pickem->title)));
 		

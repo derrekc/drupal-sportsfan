@@ -14,7 +14,7 @@ function team_schema() {
 				'name' => array('type' => 'varchar','length' => 35,'not null' => TRUE,'default' => '',),
 				'nickname' => array('type' => 'varchar','length' => 35,),
 				'sport' => array('type' => 'varchar','length' => 12, 'not null' => TRUE, 'default' => '',),
-				'sportsbook_name' => array('type' => 'varchar','length' => 35,),
+				'sportsbook_name' => array('type' => 'text','size' => 'big',),
 				'league' => array('type' => 'varchar', 'length' => '15'),
 				'conf_name' => array('type' => 'varchar','length' => '15','not null' => TRUE, 'default' => ''),
 				'conf_division' => array('type' => 'varchar','length' => 25,),
@@ -79,4 +79,12 @@ function team_schema() {
 			),
 		),
 	);
+}
+
+/**
+ * Alter the sportsbook_name column so it'll be big enough to accept multiple variations of a 
+ * school's name represented in Sportsbook.com's feed.
+ */
+function team_update_7201() {
+	db_change_field('team', 'sportsbook_name', 'sportsbook_name', array('type' => 'text','size' => 'big',));
 }

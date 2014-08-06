@@ -50,6 +50,18 @@ class SportsEvent extends Entity {
 			);
 	}
 
+	public function displayTitleWithLines() {
+		if (empty($this->betting_line)) {
+			return $this->displayTitle();
+		}
+		return sprintf('%s %s %s (%s)',
+			$this->visiting_team->displaytitle,
+			$this->neutral == 'Y' ? 'vs.' : 'at',
+			$this->host_team->displaytitle,
+			$this->betting_line
+			);	
+	}
+	
 	public function displayTitleMobile() {
 		if (!empty($this->title)) {
 			return $this->title;
@@ -121,6 +133,10 @@ class SportsEvent extends Entity {
 			}
 		} 
 		return $out;
+	}
+	
+	public function hasFavorite() {
+		return !empty($this->favorite);
 	}
 }
 

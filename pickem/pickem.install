@@ -35,6 +35,7 @@ function pickem_install() {
 		field_create_field($field);
 	}
 	foreach (_pickem_installed_instances() as $instance) {
+		drush_print(sprintf("%s / %s", $instance['bundle'], $instance['field_name']));
 		field_create_instance($instance);
 	}
 	#pickem_install_fields();	// will do manually
@@ -55,6 +56,7 @@ function pickem_uninstall() {
 	}
 	$instances = field_info_instances('pickem');
 	foreach ($instances as $instance_name => $instance) {
+		drush_log('removing field instance: ' . $instance_name, 'ok');
 		field_delete_instance($instance);
 	}
 	
@@ -141,29 +143,6 @@ function _pickem_load_conferences() {
 function pickem_schema() {
 	
 	return array(
-		/*
-		'school' => array(
-			'description' => 'Table of schools in college football',
-			'fields' => array(
-				'sid' => array('type' => 'serial','not null' => TRUE,'unsigned' => TRUE,),
-				'title' => array('type' => 'varchar','length' => 35,'not null' => TRUE,'default' => '',),
-				'displaytitle' => array('type' => 'varchar','length' => 45,'not null' => TRUE,'default' => '',),
-				'name' => array('type' => 'varchar','length' => 35,'not null' => TRUE,'default' => '',),
-				'nickname' => array('type' => 'varchar','length' => 35,),
-				'sport' => array('type' => 'varchar','length' => 12, 'not null' => TRUE, 'default' => '',),
-				'sportsbook_name' => array('type' => 'varchar','length' => 35,),
-				'conf_name' => array('type' => 'varchar','length' => '15','not null' => TRUE,),
-				'conf_division' => array('type' => 'varchar','length' => 25,),
-				'active' => array('type' => 'int','size' => 'tiny','not null' => TRUE,'default' => 1,),
-				'title_ineligible' => array('type' => 'int', 'size' => 'tiny', 'default' => 0,),
-			),
-			'indexes' => array(
-				'machine_name' => array(array('name', 5)),
-				'conf_name' => array(array('conf_name', 3)),		
-			),
-			'primary key' => array('sid'),
-		),
-		*/
 		'pickem' => array(
 			'fields' => array(
 				'pid' => array('type' => 'serial','unsigned' => TRUE,'not null' => TRUE,),
@@ -243,6 +222,7 @@ function pickem_schema() {
 				'title' => array('type' => 'varchar','length' => 35,),
 				'start' => array('type' => 'int','not null' => TRUE,'default' => 0,),
 				'end' => array('type' => 'int','not null' => TRUE,'default' => 0,),
+				'open' => array('type' => 'varchar', 'length' => 1, 'default' => 'N',),
 				'pickem_id' => array('type' => 'int', 'not null' => TRUE, 'default' => 0,),
 			),
 			'primary key' => array('week', 'pickem_id'),
@@ -251,11 +231,13 @@ function pickem_schema() {
 			'description' => 'Player info',
 			'fields' => array(
 				'uid' => array('type' => 'int','unsigned' => TRUE,'not null' => TRUE,),
+				'name' => array('type' => 'varchar', 'length' => 60, 'not null' => TRUE, 'default' => ''),
 				'player_level' => array('type' => 'varchar','length' => '15','default' => 'active_full',),
 				'games_picked' => array('type' => 'int','default' => 0,),
 				'weeks_won' => array('type' => 'int', 'default' => 0,),
 				'pickem_id' => array('type' => 'int', 'not null' => TRUE, 'default' => 0,),
 				'pickem_options' => array('type' => 'blob', 'size'=>'normal'),
+				'player_data' => array('type' => 'blob', 'size' => 'normal'),
 			) + entity_exportable_schema_fields(),
 			'primary key' => array('uid', 'pickem_id'),
 		),
@@ -366,4 +348,18 @@ function pickem_schema() {
 		),
 		*/
 	);
+}
+
+/**
+ * Adds 'player_data' column to pickem_player table
+ */
+function pickem_update_7200() {
+	db_add_field('pickem_player', 'player_data', array('type' => 'blob', 'size' => 'normal'));
+}
+
+/**
+ * Adds 'name' field to pickem_player table
+ */
+function pickem_update_7201() {
+	db_add_field('pickem_player', 'name', array('type' => 'varchar', 'length' => 60, 'not null' => TRUE, 'default' => ''));
 }

@@ -124,10 +124,10 @@ function pickem_admin_players_form($form, &$form_state, $pickem) {
 		$row = array();
 		$row[] = $user->name;
 		if (array_key_exists($user->uid, $pickem->players)) {
-			$row[] = l(t('Remove Player'), 'admin/content/pickem/manage/1/players/remove/' . $user->uid);
+			$row[] = l(t('Remove Player'), 'admin/content/pickem/manage/' . $pickem->pid . '/players/remove/' . $user->uid);
 		}
 		else {
-			$row[] = l(t('Add User To Pickem'), 'admin/content/pickem/manage/1/players/add/' . $user->uid);
+			$row[] = l(t('Add User To Pickem'), 'admin/content/pickem/manage/' . $pickem->pid . '/players/add/' . $user->uid);
 		}
 		$rows[] = $row;
 	}
@@ -139,4 +139,104 @@ function pickem_admin_players_form($form, &$form_state, $pickem) {
 		'#empty' => t('No Players/Users'),
 	);
 	return $form;
+}
+
+function pickem_admin_weeks_overview($pickem) {
+	$pickem_wrapper = entity_metadata_wrapper('pickem', $pickem);
+	$max_bye_weeks_allowed = $pickem_wrapper->max_bye_weeks_allowed->value();
+	$pick_default_pickem = $pickem_wrapper->pick_default->value();
+		
+	// Load Weeks
+	$weeks = db_select('week', 'w')
+		->fields('w')
+		->condition('pickem_id', $pickem->pid)
+		->orderBy('week')
+		->execute();
+
+	$build = array();
+
+	$header = array(
+		t('Week'),
+		t('Start'),
+		t('End'),
+		t('Actions'),
+	);
+	
+	$rows = array();
+	foreach ($weeks as $week) {
+		$rows[] = array(
+			$week->title,
+			$week->start,
+			$week->end,
+			l(t('Open Week'), 'admin/content/pickem/manage/' . $pickem->pid . '/weeks/' . $week->week . '/open') . ' &nbsp; ' .
+			l(t('Close Week'), 'admin/content/pickem/manage/' . $pickem->pid . '/weeks/' . $week->week . '/close')
+		);
+	}
+	
+	$build['weeks'] = array(
+		'#theme' => 'table',
+		'#header' => $header,
+		'#rows' => $rows,
+		'#empty' => t('No Weeks'),
+	);
+	return $build;
+}
+
+/**
+ * Page callback for opening week for play
+ */
+function pickem_admin_week_open_form($form, &$form_state, $pickem, $week) {
+	$form_state['storage']['pickem'] = $pickem;
+	$form_state['storage']['week'] = $week;
+	
+	$pickem_slate = $pickem->getPickemSlateForWeek(1);
+	//dpm($pickem_slate);
+	
+	$form['start_message'] = array(
+		'#type' => 'markup',
+		'#markup' => t('Press the \'Start\' button to begin the Open Week process.  This will affect @count players.', 
+			array('@count' => count($pickem->players))),
+	);
+	
+	$form['week'] = array(
+		'#type' => 'select',
+		'#options' => drupal_map_assoc(array_keys($pickem->slate_weeks)),
+		'#description' => 'Select the Week in which to open the Pickem slate',
+		'#title' => t('Week'),
+		'#required' => TRUE,
+	);
+	$form['actions'] = array('#type' => 'actions');
+	$form['actions']['start'] = array(
+		'#type' => 'submit',
+		'#value' => t('Start'),
+	);
+	return $form;
+}
+
+/**
+ * Submit callback
+ */
+function pickem_admin_week_open_form_submit($form, &$form_state) {
+	$operations = array();
+	
+	$pickem = $form_state['storage']['pickem'];
+	$week = $form_state['values']['week'];
+	
+	// operation for deleting the picks for all the players for this 'week'
+	// $operations[] = array('pickem_batch_clear_picks_for_week', array($pickem, $week));
+	
+	foreach ($pickem->players as $player) {
+		$operations[] = array('pickem_batch_setup_player_for_week', array($pickem, $player, $week));
+	}
+	
+	$operations[] = array('pickem_batch_mark_pickem_week_open_status', array($pickem, $week, 'Y'));
+	
+	$batch = array(
+		'title' => t('Processing players for the start of the week'),
+		'init_message' => t('Initializing for Week ' . $week),
+		'operations' => $operations,
+		'file' => drupal_get_path('module', 'pickem') . '/pickem.batch.inc',
+		'finished' => 'pickem_batch_setup_week_finished',
+	);
+	batch_set($batch);
 }

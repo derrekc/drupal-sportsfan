@@ -13,9 +13,70 @@ class Team extends Entity {
 	public $displaytitle;
 	public $league;
 	public $active;
+	
+	private $_pollTallies = NULL;
 
 	public function __construct($values = array()) {
 		parent::__construct($values, 'team');
+		
+		$result = db_select('team_color','c')
+			->fields('c')
+			->condition('team_name', $this->name)
+			->execute();
+			
+		if ($result->rowCount() > 0) {
+			$this->colors = array();
+			foreach ($result as $color) {
+				$this->colors[$color->tag] = '#' . $color->color_value;
+			}
+		}
+		
+		$this->rank = array();
+	}
+	
+	public function team_color($tag) {
+		if (!isset($this->colors)) {
+			return FALSE;
+		}
+		return $this->colors[$tag];
+	}
+	
+	public function team_colors() {
+		if (!isset($this->colors)) {
+			return FALSE;
+		}
+		return $this->colors;
+	}
+	
+	public function fetchPollTallies() {
+		if (!is_null($this->_pollTallies)) { return; }
+		
+		$this->_pollTallies = array('season' => array(), 'poll' => array());
+		$result = db_select('sportspoll_tally','t')
+			->fields('t')
+			->condition('team_name', $this->name)
+			->orderBy('pollid')
+			->orderBy('week')
+			->execute();
+			
+		foreach ($result as $tally) {
+			if (!isset($this->_pollTallies['season'][$tally->season])) {
+				$this->_pollTallies['season'][$tally->season] = array(
+					'poll' => array()
+				);
+			}
+			$this->_pollTallies['season'][$tally->season]['poll'][$tally->pollid][$tally->week] = array(
+				'points' => $tally->points,
+				'rank' => $tally->rank
+			);
+		}
+	}
+	
+	public function pollResults($season, $pollid, $week = FALSE) {
+		if (!$week) {
+			return $this->_pollTallies['season'][$season]['poll'][$pollid];
+		}
+		return $this->_pollTallies['season'][$season]['poll'][$pollid][$week];
 	}
 }	
 

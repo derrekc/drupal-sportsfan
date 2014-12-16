@@ -5,3 +5,4 @@ core = 7.x
 files[] = sportsevent.entity.inc
 stylesheets[all][] = css/sportsevent.css
 dependencies[] = team
+package = Sports Fan

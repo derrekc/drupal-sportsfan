@@ -11,16 +11,42 @@ function sportsfan_menu() {
 			'file' => 'sportsfan.page.inc',
 			'access callback' => TRUE,
 		),
+		'sandbox' => array(
+			'title' => 'SportsFan Sandbox',
+			'page callback' => 'sportsfan_sandbox',
+			'file' => 'sportsfan.sandbox.inc',
+			'access arguments' => array('administer site configuration'),
+		),
+		'charts' => array(
+			'title' => 'Charts',
+			'page callback' => 'sportsfan_charts',
+			'access callback' => TRUE,
+			'file' => 'sportsfan.page.inc',
+		),
+		'charts/appoll-movement' => array(
+			'title' => 'AP Poll Movement',
+			'page callback' => 'sportsfan_chart_appoll',
+			'access callback' => TRUE,
+			'file' => 'sportsfan.page.inc',
+		),
+		'charts/ofei' => array(
+			'title' => 'Offensive Efficiency',
+			'page callback' => 'sportsfan_chart_ofei_sos',
+			'access callback' => TRUE,
+			'file' => 'sportsfan.page.inc',
+		),
+		'charts/poll-drop' => array(
+			'title' => 'Poll Movement for Ranked Teams Losing',
+			'page callback' => 'sportsfan_chart_drop_in_rankins',
+			'access callback' => TRUE,
+			'file' => 'sportsfan.page.inc',
+		),
 	);
 }
 
 /**
- * Implements hook_theme()
+ * Implements hook_block_info
  */
-function sportsfan_theme() {
-	return array(
-	);
-}
 
 /**
  * Implements hook_block_info()
@@ -31,5 +57,147 @@ function sportsfan_block_info() {
 	$sportsfan_custom_block_info = module_invoke_all('sportsfan_block_info');
 
 	return array(
+		'ncaaf_carousel' => array(
+			'info' => t('College Football Content Carousel (SportsFan)'),
+			'cache' => DRUPAL_NO_CACHE,
+		)
 	) + $sportsfan_custom_block_info;
+}
+
+/**
+ * Implements hook_block_view()
+ */
+function sportsfan_block_view($delta) {
+	$content = '';
+	$subject = NULL;
+	switch ($delta) {
+		case 'ncaaf_carousel':
+			$nodes = _sportsfan_carousel_nodes('ncaaf');
+			$content = theme('portal-carousel', array('nodes' => $nodes, 'item-count' => count($nodes)));
+			break;
+		
+		default:
+			$content = '';
+			$subject = NULL;
+			break;
+	}
+	return array(
+		'content' => $content,
+		'subject' => $subject,
+	);
+}
+
+function _sportsfan_carousel_nodes($sport) {
+	$carousel_term = reset(taxonomy_get_term_by_name('carousel-item', 'tags'));
+	$sports_term = reset(taxonomy_get_term_by_name(strtoupper($sport), 'tags'));
+	
+	if ($carousel_term == NULL) { return array(); }
+	if ($sports_term == NULL) { return array(); }
+	
+	$query = new EntityFieldQuery();
+	$query->entityCondition('entity_type', 'node')
+	->entityCondition('bundle', array('article', 'staff_article'))
+	->fieldCondition('field_tags', 'tid', $carousel_term->tid)
+	->fieldCondition('field_tags', 'tid', $sports_term->tid)
+	->propertyOrderBy('created', 'DESC')
+	->range(0, 5);
+	
+	$result = $query->execute();
+	$nids = array_keys($result['node']);
+	#$nids = taxonomy_select_nodes($term->tid, FALSE, 5);
+	$nodes = node_load_multiple($nids);
+	
+	for ($i = 0; $i < count($nids); $i++) {
+		$classes = array();
+		if ($i == 0) {
+			$classes[] = 'active';
+		}
+		$items[] = array('data' => '', 'data-slide-to' => $i, 'data-target' => '#myCarousel', 'class' => $classes);
+	}
+	return $nodes;
+}
+
+/**
+ * Implements hook_theme()
+ */
+function sportsfan_theme($existing, $type, $theme, $path) {
+	return array(
+		'portal-carousel' => array(
+			'template' => 'sportsfan-portal-carousel',
+			'path' => $path . '/theme',
+			'variables' => array('nodes' => NULL, 'item_count' => NULL),
+		)
+	);
+}
+
+/**
+ * Implements hook_entity_info_alter()
+ */
+function sportsfan_entity_info_alter(&$entity_info) {
+	$entity_info['node']['view modes']['sfan_custom_teaser'] = array(
+		'label' => t('SportsFan Front Teaser'),
+		'custom settings' => TRUE,
+	);
+}
+
+/**
+ * Implements hook_preprocess_node()
+ */
+function sportsfan_preprocess_node(&$vars) {
+	if ($vars['view_mode'] == 'sfan_custom_teaser') {
+		$vars['theme_hook_suggestions'][] = 'node__sfan_custom_teaser';
+		$vars['theme_hook_suggestions'][] = 'node__' . $vars['type'] . '__sfan_custom_teaser';
+	}
+}
+
+/**
+ * Implements hook_twitter_status_save
+ */
+function sportsfan_twitter_status_save($status) {
+	watchdog('sportsfan', print_r($status, TRUE));
+}
+
+/**
+ * Implements hook_form_alter
+ * for user_register_form
+ */
+function sportsfan_form_alter(&$form, &$form_state, $form_id) {
+	if ($form_id != 'user_register_form') {
+		return;
+	}
+	if (module_exists('pickem')) {
+		// get list of pickems that are active.
+		$active_pickems = pickem_active_pickem_titles();
+		$form['join-pickems'] = array(	
+			'#type' => 'fieldset',
+			'#collapsible' => FALSE,
+			'#collapsed' => FALSE,
+			'#title' => t('Pickem Contests To Join'),
+		);
+		$form['join-pickems']['pickem_id'] = array(
+			'#type' => 'checkboxes',
+			'#options' => $active_pickems,
+			'#title' => t('Select the Pickem contests you are interested in joining...'),
+		);
+		$form['#submit'][] = 'sportsfan_add_user_to_pickem';
+	}
+}
+
+function sportsfan_add_user_to_pickem($form, &$form_state) {
+	$uid = $form_state['values']['uid'];
+	$uname = $form_state['values']['name'];
+	$pickem_id = $form_state['values']['pickem_id'];
+	foreach ($pickem_id as $pid => $p) {
+		if ($p != 0) {
+			// add the pickem to the user, 
+			// TODO set up temporary container
+			$pickem = pickem_load($pid);
+			$pickemController = entity_get_controller('pickem');
+			$pickem_player = $pickemController->addPlayer($uid, $uname, $pid, 0); // 0 = status
+			if ($pickem_player) {
+				drupal_set_message(t('You have been added to the @pickem_title and will be activated once your site account is active.', 
+					array('@pickem_title' => $pickem->title)));
+			}		
+		}
+	}
 }

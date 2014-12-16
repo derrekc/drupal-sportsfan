@@ -35,24 +35,84 @@ function venue_menu() {
 	);
 }
 
-function venue_load_venues($conditions = NULL) {
-	$query = db_select('venues', 'v')
-		->fields('v');
-	
-	$result = $query->execute();
-	$rows = array();
-	foreach ($result as $row) {
-		$rows[] = $row;
-	}
-	return $rows;
+function venue_entity_info() {
+	return array(
+		'venue' => array(
+			'label' => t('Venue'),
+			'label callback' => 'venue_label_callback',
+			'plural label' => t('Venues'),
+			'entity class' => 'Venue',
+			'controller class' => 'VenueController',
+			'base table' => 'venue',
+			'fieldable' => TRUE,
+			'entity keys' => array(
+				'id' => 'vid'
+			),
+			'load hook' => 'venue_load',
+			'admin ui' => array(
+				'path' => 'admin/content/venues',
+				'controller class' => 'VenueUIController',
+				'file' => 'includes/venue.admin.inc',
+			),
+			'bundles' => array(
+				'team' => array(
+					'label' => 'Venue',
+					'admin' => array(
+						'path' => 'admin/structure/venue/manage',
+						'access arguments' => array('administer venue entities'),
+					),
+				),
+			),
+			'module' => 'venue',
+			'access callback' => 'venue_access_callback',
+			'static cache' => TRUE,
+			'uri callback' => 'entity_class_uri',
+		),
+	);	
 }
 
-function venue_load_venue($vid) {
-	$query = db_select('venues', 'v')
-		->fields('v')
-		->condition('vid', $vid);
-		
-	$result = $query->execute();
-	$row = $result->fetchObject();
-	return $row;
+/**
+ * Team access callback.
+ */
+function venue_access_callback() {
+
+  if (user_is_anonymous() || !user_access('administer venue entities')) {
+    return FALSE;
+  }
+  else {
+    return TRUE;
+  }
+
+}
+
+// LABEL CALLBACKS
+/**
+ * Label callback for team entities
+ */
+function venue_label_callback($venue, $type = NULL) {
+	return empty($venue->name) ? 'Untitled Venue' : $venue->title;	
+}
+
+/**
+ * URI Callback for Team
+ */
+function venue_basic_uri($venue) {
+	return array(
+		'path' => sprintf('venue/%s/%s', $venue->sport, $venue->vid),
+	);
+}
+
+/**
+ * Menu autoloader for /team.
+ */
+function venue_load($venue_id, $reset = FALSE) {
+  $venue = venue_load_multiple(array($venue_id), array(), $reset);
+  return reset($venue);
+}
+
+/**
+ * Load multiple team based on certain conditions.
+ */
+function venue_load_multiple($venue_ids = FALSE, $conditions = array('active' => 1), $reset = FALSE) {
+  return entity_load('venue', $venue_ids, $conditions, $reset);
 }

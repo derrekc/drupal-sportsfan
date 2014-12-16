@@ -28,6 +28,7 @@ function team_drush_command() {
 			'sportsbook_name' => 'Sportsbook name to add',
 		),
 		'required-arguments' => 2,
+		'aliases' => array('addsbn'),
 		'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
 	);
 	$items['sbname-list'] = array(
@@ -36,6 +37,7 @@ function team_drush_command() {
 			'teamname' => 'Team name to lookup',
 		),
 		'required-arguments' => 1,
+		'aliases' => array('sbl'),
 		'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
 	);
   return $items;

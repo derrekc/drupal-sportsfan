@@ -1,5 +1,5 @@
-name = Pickem 2013
-description = Pickem UI for 2013
+name = Pickem 2014
+description = Pickem UI for 2014
 core = 7.x
 package = Sports Fan
 ; files[] = pickem.model.inc

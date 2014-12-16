@@ -6,4 +6,4 @@ package = Sports Fan
 dependencies[] = entity
 dependencies[] = sportsfan
 
-files[] = venue.module
+files[] = venue.entity.inc

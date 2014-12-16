@@ -15,10 +15,13 @@ function sportevents_menu() {
 			'access arguments' => array('administer sportsevent entities'),
 			'type' => MENU_NORMAL_ITEM,
 		),
+		'admin/structure/sportsevent/ncaaf' => array(
+			'title' => 'NCAA Football',
+			'access arguments' => array('administer sportsevent entities'),
+		),
 		'admin/structure/sportsevent/ncaaf/manage' => array(
 			'title' => 'NCAA Football',
 			'access arguments' => array('administer sportsevent entities'),
-			'type' => MENU_NORMAL_ITEM,
 		),
 		'admin/structure/sportsevent/ncaam/manage' => array(
 			'title' => 'NCAA Men\'s Basketball',
@@ -30,6 +33,13 @@ function sportevents_menu() {
 			'access arguments' => array('administer sportsevent entities'),
 			'type' => MENU_NORMAL_ITEM,
 		),
+		#'sportsevent/%sportsevent/edit-score' => array(	
+		#	'title' => 'Edit Score',
+		#	'access arguments' => array('edit sportsevent entities'),
+		#	'type' => MENU_CALLBACK,
+		#	'page callback' => 'drupal_get_form',
+		#	'page arguments' => array('sportsevent_edit_score_form', 1),
+		#)
 	);
 }
 
@@ -59,6 +69,7 @@ function sportsevent_entity_info() {
 			'bundles' => array(
 				'ncaaf' => array(
 					'label' => 'College Football',
+					'uri callback' => 'sportsevent_ncaam_uri_callback',
 					'admin' => array(
 						'path' => 'admin/structure/sportsevent/ncaaf/manage',
 						'access arguments' => array('administer sportsevent entities'),
@@ -71,6 +82,7 @@ function sportsevent_entity_info() {
 						'access arguments' => array('administer sportsevent entities'),
 					),
 				),
+				/*
 				'nfl' => array(
 					'label' => 'NFL',
 					'admin' => array(
@@ -78,13 +90,127 @@ function sportsevent_entity_info() {
 						'access arguments' => array('administer sportsevent entities'),
 					),
 				),
+				*/
 			),
 			'module' => 'sportsevent',
 			'access callback' => 'sportsevent_access_callback',
-			'static cache' => TRUE,
-			'uri callback' => 'entity_class_uri',
+			'static cache' => FALSE,
+			'uri callback' => 'sportsevent_uri_callback',
+		  'view modes' => array(
+        'full' => array(
+          'label' => t('Full SportsEvent Info'),
+          'custom settings' => FALSE,
+        ),
+        'scoreboard' => array(
+          'label' => t('Scoreboard'),
+          'custom settings' => FALSE,
+        )  
+      )
 		),
 	);
+}
+
+/* FIELD INFO HOOKS
+--------------------------------------------- */
+function sportsevent_field_info() {
+	$field_type = array();
+	$field_type['sportsevent'] = array(
+		'label' => 'Sporting Event',
+		'description' => 'Sporting Event',
+		'widget' => array(
+			'type' => 'sportsevent_text',
+		),
+		'default_widget' => 'sportsevent_text',
+		'default_formatter' => 'sportsevent_simple',
+	);
+	return $field_type;
+}
+
+function sportsevent_field_formatter_prepare_view($entity_type, $entities, $field, $instances, $langcode, &$items, $displays) {
+  // load each sportsevent entity
+	foreach ($items as $nid => $item) {
+		$items[$nid][0]['sportsevent'] = sportsevent_load($item[0]['eid']);
+	}
+}
+
+function sportsevent_field_schema($field) {
+	$columns = array(
+		'eid' => array('type' => 'int', 'not null' => FALSE,),
+	);
+	$indexes = array(
+		'eid' => array('eid'),
+	);
+	return array(
+		'columns' => $columns,
+		'indexes' => $indexes,
+	);
+}
+
+function sportsevent_field_is_empty($item, $field) {
+	return empty($item['eid']);	
+}
+
+function sportsevent_field_formatter_info() {
+	return array(
+		'sportsevent_simple' => array(
+			'label' => t('Simple SportsEvent Item Display'),
+			'field types' => array('sportsevent'),
+		),
+		'sportsevent_logos' => array(
+			'label' => t('SportsEvent Display with Logos'),
+			'field types' => array('sportsevent'),
+		),
+	);
+}
+
+function sportsevent_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+	$element = array();
+	
+	switch ($display['type']) {
+		// This formatter displays the SportsEvent title and opponents
+		case 'sportsevent_simple':
+			foreach ($items as $delta => $item) {
+				$element[$delta]['#theme'] = 'sportsevent_formatter_simple';
+				$element[$delta]['#sportsevent'] = $item['sportsevent'];
+			}
+			break;
+			
+		case 'sportsevent_logos':
+			foreach ($items as $delta => $item) {
+				$element[$delta]['#markup'] = '<p>Hi There with logos: ' . $delta . '</p>';
+			}
+			break;
+			
+	}
+	return $element;
+}
+
+function sportsevent_field_widget_info() {
+	return array(
+		'sportsevent_text' => array(
+			'label' => t('SportsEvent ID Field'),
+			'field types' => array('sportsevent'),
+		)
+	);
+}
+
+function sportsevent_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
+	$value = isset($items[$delta]['eid']) ? $items[$delta]['eid'] : '';
+	
+	$element += array('#delta' => $delta);
+	$element['eid'] = array();
+	
+	switch ($instance['widget']['type']) {
+		case 'sportsevent_text':
+			$element['eid'] += array(
+				'#type' => 'textfield',
+				'#title' => t('Sports Event ID'),
+				'#default_value' => $value,
+			);
+			break;
+		
+	}
+	return $element;
 }
 
 /**
@@ -104,8 +230,13 @@ function sportsevent_access_callback() {
 /**
  * Implementation of hook_theme
  */
-function sportsevent_theme() {
+function sportsevent_theme($existing, $type, $theme, $path) {
 	return array(
+		'sportsevent_formatter_simple' => array(
+			'template' => 'sportsevent_formatter_simple',
+			'variables' => array('sportsevent' => NULL),
+			'path' => $path . '/theme',
+		)
 	);
 }
 
@@ -143,6 +274,32 @@ function sportsevent_permission() {
 }
 
 /**
+ * 
+ */
+function sportsevent_twitter_status_save($status) {
+	watchdog('sportsevent', print_r($status, TRUE));
+	
+	# parse the text property
+	$tweet = str_replace('@sportsched', '', $status->text);
+	//TODO implement sport
+	$patt = '/^\s*(?P<twitter_hashtag>#\w*)\s+(?P<winner>\w+),?\s*(?P<winning_score>\d{1,2})\s?[-](?P<losing_score>\d{1,2}).*$/';
+	$match = array();
+	preg_match($patt, $tweet, $match);
+	watchdog('sportsevent', print_r($match, TRUE));
+	
+	if (!empty($match)) {
+		//TODO implement sport
+		$e = sportsevent_load_by_hashtag($match['twitter_hashtag'], $sport);
+		watchdog('sportsevent', print_r($e, TRUE));
+		if ($e->completed()) {
+			return;
+		}
+	}
+	
+	$match['winner'] = strtolower($match['winner']);
+}
+
+/**
  * URI callback for Game
  */
 function sportsevent_basic_uri($sportsevent) {
@@ -161,6 +318,21 @@ function sportsevent_basic_uri($sportsevent) {
 function sportsevent_label_callback($sportsevent, $type) {
 	$title = $sportsevent->title();
 	return empty($title) ? 'Untitled Sports Event' : $title;	
+}
+
+/**
+ * URI callback for sportsevent entities
+ */
+function sportsevent_uri_callback($sportsevent) {
+  return array(
+    'path' => 'sportsevent/' . $sportsevent->eid,
+   );
+}
+
+function sportsevent_ncaaf_uri_callback($sportsevent) {
+  return array(
+    'path' => 'sportsevent/ncaaf/' . $sportsevent->eid,
+  );
 }
 
 // games
@@ -188,6 +360,16 @@ function sportsevent_load_by_opponents($host_team_name, $visiting_team_name, $co
 	$conditions['visiting_team_name'] = $visiting_team_name;
 	$games = sportsevent_load_multiple(FALSE, $conditions, TRUE);
 	return reset($games);
+}
+
+/**
+ * Load sportsevent by twitter_hashtag
+ */
+function sportsevent_load_by_hashtag($hashtag, $sport) {
+	$conditions['twitter_hashtag'] = $hashtag;
+	$conditions['sport'] = $sport;
+	$events = sportsevent_load_multiple(FALSE, $conditions, TRUE);
+	return reset($events);
 }
 
 /**

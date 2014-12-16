@@ -1,1 +1,26 @@
-<?php\n\nfunction sportspoll_menu() {}\n
+<?php
+
+function sportspoll_menu() {
+	return array();
+}
+
+function sportspoll_entity_info() {
+	return array(
+		'sportspoll' => array(
+			'label' => t('Sports Poll'),
+			'label callback' => 'sportspoll_label_callback',
+			'entity class' => 'SportsPoll',
+			'plural label' => t('Sports Poll'),
+			'controller class' => 'SportsPollController',
+			'base table' => 'sportspoll',
+			'load hook' => 'sportspoll_load',
+			'fieldable' => FALSE,
+			'uri callback' => 'sportspoll_basic_uri',
+			'entity keys' => array(
+				'id' => 'pollid',
+			),
+			'module' => 'sportspoll',
+		),
+		
+	);
+}

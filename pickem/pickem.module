@@ -22,11 +22,15 @@ function pickem_menu() {
 			'description' => 'Pickem Management',
 			'access arguments' => array('administer pickem entities'),
 		),
-		'admin/structure/pickem/weekly-pickem' => array(
+		'admin/structure/pickem/manage' => array(
+			'title' => 'Management',
+			'access arguments' => array('administer pickem entities'),
+		),
+		'admin/structure/pickem/manage/weekly-pickem' => array(
 			'title' => 'Weekly Pickem',
 			'access arguments' => array('administer pickem entities'),
 		),
-		'admin/structure/pickem/daily-pickem' => array(
+		'admin/structure/pickem/manage/daily-pickem' => array(
 			'title' => 'Daily Pickem',
 			'description' => 'Pickem Management',
 			'access arguments' => array('administer pickem entities'),
@@ -45,6 +49,14 @@ function pickem_menu() {
 			'access arguments' => array('administer pickem entities'),
 			'page callback' => 'drupal_get_form',
 			'page arguments' => array('pickem_admin_week_open_form', 4, 6),
+			'file' => 'includes/pickem.admin.inc',
+			'type' => MENU_LOCAL_TASK,
+		),
+		'admin/content/pickem/manage/%pickem/close-week' => array(
+			'title' => 'Close Pickem Week',
+			'access arguments' => array('administer pickem entities'),
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('pickem_admin_week_close_form', 4, 6),
 			'file' => 'includes/pickem.admin.inc',
 			'type' => MENU_LOCAL_TASK,
 		),
@@ -76,39 +88,14 @@ function pickem_menu() {
 		),
 		# ============ FRONT END PATHS =============
 		'pickem' => array(
-			'title' => 'Sports Pickem Portal',
+			'title' => 'Pickem Contests',
 			'page callback' => 'pickem_home',
 			'access callback' => TRUE,
 		),
-		'playerform' => array(
-			'page callback' => 'drupal_get_form',
-			'page arguments' => array('pickem_pickem_player_form'),
-			'file' => 'pickem.form.inc',
-			'access callback' => 'pickem_player_access',
-			'title' => 'Player Form',
-		),
-		#'request-pickem' => array(
-		#	'title' => 'Request Pickem',
-		#	'page callback' => 'drupal_get_form',
-		#	'page arguments' => array('pickem_request_new_pickem'),
-		#	'access callback' => 'pickem_user_access',
-		#	'access arguments' => array('authenticated user'),
-		#	'file' => 'pickem.form.inc',
-		#),
 		'pickem/%pickem/join' => array(
 			'page callback' => 'drupal_get_form',
 			'page arguments' => array('pickem_pickem_user_join_form', 1),
 			'access callback' => TRUE,
-		),
-		'pickem/%pickem/slate' => array(
-			'page callback' => 'pickem_pickem_slate',
-			'page arguments' => array(1),
-			'file' => 'pickem.pages.inc',
-			'access callback' => TRUE,
-			#'access callback' => 'pickem_user_access',
-			#'access arguments' => array('authenticated user'),
-			'title callback' => 'pickem_label_callback',
-			'title arguments' => array(1),
 		),
 		'pickem/%pickem/slate/%' => array(
 			'page callback' => 'drupal_get_form',
@@ -117,23 +104,58 @@ function pickem_menu() {
 			'access callback' => TRUE,
 			#'access callback' => 'pickem_user_access',
 			#'access arguments' => array('authenticated user'),
-			'title' => 'Make Your Picks',
+			'title callback' => 'pickem_form_page_title',
+			'title arguments' => array(1, 3),
 		),
-		'pickem/%pickem/provision-slate' => array(
-			'page callback' => 'pickem_pickem_provision_slate',
+		'pickem/%pickem/slate/%/compare/%/%' => array(
+			'page callback' => 'pickem_pickem_slate_compare',
+			'page arguments' => array(1, 3, 5, 6),
+			'file' => 'pickem.pages.inc',
+			'access callback' => TRUE,
+			'title' => 'Compare Picks',
+		),
+		'pickem/%pickem/slate' => array(
+			'page callback' => 'pickem_pickem_slate',
 			'page arguments' => array(1),
 			'file' => 'pickem.pages.inc',
-			'access callback' => 'pickem_user_access',
-			'access arguments' => array('authenticated user'),
+			'access callback' => TRUE,
+			'type' => MENU_LOCAL_TASK | MENU_NORMAL_ITEM,
+			'title callback' => 'pickem_slate_page_title',
+			'title arguments' => array(1),
 		),
-		#'user/%user/pickem-settings' => array(
-		#	'title' => 'Pickem Settings',
-		#	'page callback' => 'drupal_get_form',
-		#	'page arguments' => array('pickem_user_pickem_settings_form', 1),
-		#	'access callback' => 'pickem_user_access',
-		#	'access arguments' => array('authenticated user'),
-		#	'type' => MENU_LOCAL_TASK,
+		#'pickem/%pickem' => array(
+		#	'access callback' => TRUE,
+		#	'title callback' => 'pickem_slate_page_title',
+		#	'title arguments' => array(1),
 		#),
+		'pickem/%pickem' => array(
+			'page callback' => 'pickem_pickem_overview',
+			'page arguments' => array(1),
+			'access callback' => TRUE,
+			'title callback' => 'pickem_slate_page_title',
+			'title arguments' => array(1),
+			'file' => 'pickem.pages.inc',
+			//'type' => MENU_DEFAULT_LOCAL_TASK,
+		),
+		'pickem/%pickem/overview' => array(
+			'type' => MENU_DEFAULT_LOCAL_TASK,
+			'access callback' => TRUE,
+			'title' => 'Overview',
+		),
+		'pickem/%pickem/join-success' => array(
+			'page callback' => 'pickem_user_joined_success',
+			'page arguments' => array(1),
+			'access arguments' => array('pickem player'),
+			'title' => 'Join Pickem',
+		),
+		#'pickem/%pickem/sportsevent/%sportsevent/getscore' => array(
+		#	'page callback' => 'pickem_get_score',
+		#	'page arguments' => array(1, 3),
+		#	'access arguments' => array('edit sportsevent entities'),
+		#	'type' => MENU_CALLBACK,
+		#	'file' => drupal_get_path('module', 'pickem') . '/includes/pickem.admin.inc',
+		#),
+
 		'game/%/%/%/%' => array(
 			'page callback' => 'game_info_page',
 			'page arguments' => array(1, 2, 3, 4),
@@ -149,13 +171,13 @@ function pickem_menu() {
 			'file' => 'pickem.pick.inc',
 			'type' => MENU_CALLBACK,
 		),
-		'pickem/%pickem/slate/%pickem_slate/comments' => array(
-			'page callback' => 'pickem_pick_comment_listing',
-			'page arguments' => array(1, 3),
-			'access callback' => 'pickem_user_access',
-			'access arguments' => array('authenticated user'),
-			'file' => 'pickem.pick.inc',
-			'type' => MENU_CALLBACK,
+		'pickem/%pickem/standings' => array(
+			'page callback' => 'pickem_pickem_standings',
+			'page arguments' => array(1),
+			'file' => 'pickem.pages.inc',
+			'access callback' => TRUE,
+			'title' => 'Standings',
+			'type' => MENU_LOCAL_TASK,
 		),
 		'pickem/%pickem/slate/pick-stats/%pickem_slate' => array(
 			'page callback' => 'pickem_pick_stats',
@@ -164,14 +186,6 @@ function pickem_menu() {
 			'access arguments' => array('authenticated user'),
 			'file' => 'pickem.pick.inc',
 			'type' => MENU_CALLBACK,
-		),
-		# ============= ADMIN UTILITY PATHS =============
-		'pickem/clear-session' => array(
-			'page callback' => 'pickem_clear_pickem_session_data',
-			'page arguments' => array(2,3),
-			'file' => 'pickem.util.inc',
-			'access callback' => 'pickem_user_access',
-			'access arguments' => array('administer pickem settings'),
 		),
 	);
 	
@@ -197,21 +211,28 @@ function pickem_entity_info() {
 			'load hook' => 'pickem_load',
 			'admin ui' => array(
 				'path' => 'admin/content/pickem',
-				//'controller class' => 'TeamUIController',
+				'controller class' => 'PickemUIController',
 				'file' => 'includes/pickem.admin.inc',
 			),
 			'bundles' => array(
 				'weekly-pickem' => array(
 					'label' => 'Weekly Pickem',
 					'admin' => array(
-						'path' => 'admin/structure/pickem/weekly-pickem/manage',
+						'path' => 'admin/structure/pickem/manage/weekly-pickem',
 						'access arguments' => array('administer pickem entities'),
 					),
 				),
 				'daily-pickem' => array(
 					'label' => 'Daily Pickem',
 					'admin' => array(
-						'path' => 'admin/structure/pickem/daily-pickem/manage',
+						'path' => 'admin/structure/pickem/manage/daily-pickem',
+						'access arguments' => array('administer pickem entities'),
+					),
+				),
+				'tourney-pickem' => array(
+					'label' => 'Tournament Pickem',
+					'admin' => array(
+						'path' => 'admin/structure/pickem/manage/tourney-pickem',
 						'access arguments' => array('administer pickem entities'),
 					),
 				),
@@ -265,6 +286,20 @@ function pickem_entity_info() {
 			'module' => 'pickem',
 			'fieldable' => FALSE,
 		),
+		'pickem_player_result' => array(
+			'label' => t('Pickem Player Result'),
+			'label callback' => 'entity_label',
+			'entity class' => 'PickemPlayerResult',
+			'controller class' => 'PickemPlayerResultController',
+			'plural label' => t('Pickem Player Results'),
+			'base table' => 'pickem_player_result',
+			'load hook' => 'pickem_player_result_load',
+			'fieldable' => FALSE,
+			'entity keys' => array(
+				'id' => 'rid',
+			),
+			'module' => 'pickem',
+		),
 		'pickem_player' => array(
 			'label' => t('Pickem Player'),
 			'label callback' => 'entity_label',
@@ -272,11 +307,26 @@ function pickem_entity_info() {
 			'plural label' => t('Pickem Player'),
 			'controller class' => 'PickemPlayerController',
 			'base table' => 'pickem_player',
-			'load look' => 'pickem_player_load',
+			'load hook' => 'pickem_player_load',
 			'fieldable' => TRUE,
 			'uri callback' => 'pickem_player_basic_uri',
 			'entity keys' => array(
 				'id' => 'uid',
+			),
+			'module' => 'pickem',
+		),
+		'standings' => array(
+			'label' => t('Standings'),
+			'label callback' => 'entity_label',
+			'entity class' => 'Standings',
+			'plural label' => t('Standings Rows'),
+			'controller class' => 'StandingsController',
+			'base table' => 'standings',
+			'load look' => 'standings_load',
+			'fieldable' => FALSE,
+			'uri callback' => 'standings_basic_uri',
+			'entity keys' => array(
+				'id' => 'id',
 			),
 			'module' => 'pickem',
 		),
@@ -321,7 +371,7 @@ function pickem_entity_load(&$entities, $type) {
 		$entity->foo = $type;
 	}
 }
-  
+ 
 function pickem_theme($existing, $type, $theme, $path) {
 	return array(
 		'pickem_home' => array(
@@ -331,6 +381,11 @@ function pickem_theme($existing, $type, $theme, $path) {
 		'pickem_picks' => array(
 			'template' => 'pickem_picks',
 			'variables' => array('entries' => NULL),
+		),
+		'pickem-disqus' => array(
+			'template' => 'pickem-disqus',
+			'path' => $path . '/theme',
+			'variables' => array('pickem_disqus_id' => NULL, 'pickem_id' => NULL, 'pickem_week' => NULL),
 		),
 		'game_title' => array(
 			'variables' => array('game' => NULL, 'logobasepath' => NULL, 'other_player' => NULL),
@@ -352,15 +407,21 @@ function pickem_theme($existing, $type, $theme, $path) {
 		'pickem-overview' => array(
 			'variables' => array(
 				'standingsTopTen' => NULL,
-				'upcomingGames' => NULL,
+				'currentWeekResults' => NULL,
 				'pickemPlayer' => NULL,
 				'pickem' => NULL,
+				'playerStandings' => NULL,
 			),
 			'template' => 'pickem-overview',
 		),
 		'pickem_pickem_player_form' => array(
 			'render element' => 'form',
 			'file' => 'pickem.form.inc',
+		),
+		'pickem_ecuacc4ever_slate_form' => array(
+			'render element' => 'form',
+			'template' => 'pickem_slate_form',
+			'path' => $path . '/theme'
 		),
 		'pickem_pickem__slate_form' => array(
 			'render element' => 'form',
@@ -369,6 +430,20 @@ function pickem_theme($existing, $type, $theme, $path) {
 		'slate-game' => array(
 			'render element' => 'slate_event',
 			'template' => 'slate_game',
+		),
+		'slate-sportsevent-title' => array(
+			'template' => 'sportsevent_title',
+			'variables' => array(
+				'sportsevent' => NULL,
+				'visiting_team' => NULL,
+				'host_team' => NULL,
+				'betting_line' => '',
+				'vs_at_label' => 'at',
+				'completed' => FALSE,
+				'week' => NULL,
+				'sport' => NULL,
+				'favorite' => NULL,
+			),
 		),
 		'slate-sportsevent' => array(
 			'render element' => 'slate_event',
@@ -398,6 +473,7 @@ function pickem_theme($existing, $type, $theme, $path) {
 				'modal_dialog_id' => NULL, 
 				'data_target' => NULL,
 				'btn_display_class' => 'btn-default',
+				'glyphicon' => NULL,
 				'btn_size_class' => '',
 				'title' => NULL,
 				'disabled' => FALSE,
@@ -421,6 +497,10 @@ function pickem_theme($existing, $type, $theme, $path) {
 			),
 			'path' => drupal_get_path('module', 'pickem') . '/theme',
 		),
+		'joined-success' => array(
+			'template' => 'joined-success',
+			'path' => drupal_get_path('module', 'pickem') . '/theme',
+		),
 		'modal-pick-comments' => array(
 			'template' => 'modal-pick-comments',
 			'variables' => array(
@@ -428,6 +508,23 @@ function pickem_theme($existing, $type, $theme, $path) {
 				'modal_dialog_id' => NULL, 
 			),
 			'path' => drupal_get_path('module', 'pickem') . '/theme',
+		),
+		'pickemform_navbar' => array(
+			'path' => drupal_get_path('module', 'pickem') . '/includes',
+			'file' => 'pickem.theme.inc',
+			'variables' => array(
+				'pickem_player' => NULL,
+				'pickem' => NULL,
+				'week' => NULL,
+				'related_nodes' => NULL,
+			),
+		),
+		'pickem_sportsevent_title' => array(
+			'variables' => array(
+				'sportsevent' => NULL,
+			),
+			'path' => $path . '/theme',
+			'template' => 'pickem_sportsevent_title',
 		),
 		'submitting-picks' => array(
 			'path' => drupal_get_path('module', 'pickem') . '/theme',
@@ -443,7 +540,23 @@ function pickem_theme($existing, $type, $theme, $path) {
 		),
 		'slate_compare' => array(
 			'variables' => array('slate' => NULL, 'slate_compare' => NULL, 'games' => NULL, 'player_name' => NULL, 'compare_player' => NULL, 'week' => NULL),
-		)
+		),
+		'pickem_slate_list' => array(
+			'path' => drupal_get_path('module', 'pickem') . '/includes',
+			'file' => 'pickem.theme.inc',
+			'variables' => array(
+				'pickem_player' => NULL,
+				'pickem' => NULL,
+			),
+		),
+		'complete-standings' => array(
+			'template' => 'complete-standings',
+			'path' => $path . '/theme',
+			'variables' => array(
+				'standings' => NULL,
+				'weeks' => NULL,
+			),
+		),
 	);
 }
 
@@ -452,6 +565,12 @@ function pickem_theme($existing, $type, $theme, $path) {
  */
 function pickem_action_info() {
 	return array(
+		'pickem_goto_current_slate' => array(
+			'type' => 'user',
+			'label' => t('Send user to current Pickem slate page'),
+			'configurable' => FALSE,
+			'triggers' => array('user_login')
+		),
 		'pickem_user_register_action' => array(
 			'type' => 'user',
 			'label' => t('Provision Pickem player on initial login'),
@@ -459,6 +578,17 @@ function pickem_action_info() {
 			'triggers' => array('user_insert'),
 		),
 	); 
+}
+
+/* PREPROCESS & PROCESS HOOKS
+========================================================================= */
+function pickem_preprocess_page(&$variables) {
+
+}
+
+/* ALTER HOOKS
+========================================================================= */
+function pickem_menu_breadcrumb_alter(&$active_trail, $item) {
 }
 
 function pickem_form_alter(&$form, &$form_state, $form_id) {
@@ -473,80 +603,6 @@ function pickem_form_alter(&$form, &$form_state, $form_id) {
 function _pickem_pickem_paths() {
 	$items = array();
 	
-	$dbResult = db_select('pickem','p')
-		->fields('p')
-		->execute();
-		
-	foreach ($dbResult as $row) {
-		$overviewkey = sprintf('pickem/%pickem', $row->pid);
-		$standingskey = sprintf('pickem/%pickem/standings', $row->pid);
-		$adminKey = sprintf('admin/pickem/%s', $row->pid);
-		$slatekey = sprintf('pickem/%pickem/slate', $row->pid);
-		$joinKey = sprintf('pickem/join/%pickem', $row->pid);
-		$playersetupKey = sprintf('pickem/%pickem/player-setup', $row->pid);
-		$provisionSlateKey = sprintf('pickem/%pickem/provision-slate', $row->pid);
-		
-		/*
-		$items[$adminKey] = array(
-			'page callback' => 'drupal_get_form',
-			'page arguments' => array('pickem_admin_pickem_form', $row->name),
-			'file' => 'pickem.admin.inc',
-			'access callback' => 'pickem_admin_access',
-			'access arguments' => array('administer pickem settings'),
-			'title' => $row->title,
-		);
-		*/
-		if ($row->active) {
-			$items[$overviewkey] = array(
-				'page callback' => 'pickem_pickem_overview',
-				'page arguments' => array($row->name),
-				'file' => 'pickem.pages.inc',
-				'access callback' => 'pickem_player_access',
-				'access arguments' => array($row->pid),
-				'title' => $row->title,
-			);
-			$items[$slatekey] = array(
-				'page callback' => 'drupal_get_form',
-				'page arguments' => array('pickem_pickem_slate_form', $row->name),
-				'file' => 'pickem.pages.inc',
-				'access callback' => 'pickem_user_access',
-				'access arguments' => array(sprintf('%s player', $row->name)),
-				'title' => 'Make Your Picks',
-			);
-			$items[$joinKey] = array(
-				'page callback' => 'drupal_get_form',
-				'page arguments' => array('pickem_pickem_user_join_form', 2),
-				'access callback' => TRUE,
-				#'access callback' => 'pickem_user_access',
-				#'access arguments' => array('authenticated user'),
-				'type' => MENU_CALLBACK,
-			);
-			$items[$playersetupKey] = array(
-				'page callback' => 'drupal_get_form',
-				'page arguments' => array('pickem_pickem_player_setup_form'),
-				'file' => 'pickem.pages.inc',
-				'access callback' => 'pickem_user_access',
-				'access arguments' => array(sprintf('%s player', $row->name)),
-				'title' => sprintf('Player options for %s', $row->title),
-			);
-			$items[$provisionSlateKey] = array(
-				'page callback' => 'pickem_pickem_provision_slate',
-				'page arguments' => array(3),
-				'file' => 'pickem.pages.inc',
-				'access callback' => 'pickem_user_access',
-				'access arguments' => array(sprintf('%s player', $row->name)),
-			);
-			$items[$standingskey] = array(
-				'page callback' => 'pickem_pickem_standings',
-				'page arguments' => array($row->pid),
-				'file' => 'pickem.pages.inc',
-				'access callback' => 'pickem_player_access',
-				'access arguments' => array($row->pid),
-				'title' => 'Standings',
-				'type' => MENU_LOCAL_ACTION,
-			);
-		}
-	}
 	return $items;
 }
 
@@ -572,6 +628,31 @@ function pickem_player_access($pid = NULL) {
 	$player = $res->fetchObject();
 	
 	return user_access('pickem player') && !is_null($player);
+}
+
+function pickem_user_load($accounts) {
+	foreach ($accounts as $uid => $account) {
+		$accounts[$uid]->pickem_accounts = module_invoke_all('pickem_accounts', $account);
+	}
+}
+
+function pickem_pickem_accounts($account) {
+	$query = db_select('pickem_player', 'pp');
+	$query->join('pickem', 'p', 'pp.pickem_id = p.pid');
+		
+	$query->fields('pp', array('pickem_id'))
+		->fields('p', array('title'))
+		->condition('uid', $account->uid)
+		->condition('pp.status', 1);
+	$query->addField('p', 'name', 'pickem_name');
+	$result = $query->execute();
+		
+	$pickems = array();
+	foreach ($result as $p) {
+		$pickems[] = array('pickem_id' => $p->pickem_id, 'title' => $p->title, 'pickem_name' => $p->pickem_name);
+	}
+	
+	return $pickems;
 }
 
 function pickem_user_access() {
@@ -737,7 +818,7 @@ function pickem_home() {
 			if ($user_can_play) {
 				$pickems[$pid]->ui_actions[] = array(
 					'#type' => 'markup',
-					'#markup' => l(t('Play / Make Picks'), sprintf('pickem/%s/slate', $pickems[$pid]->pid), 
+					'#markup' => l(t('Make Picks'), sprintf('pickem/%s/slate', $pickems[$pid]->pid), 
 						array(
 							'attributes' => array('class' => array('btn', 'btn-primary'))
 						)
@@ -753,14 +834,16 @@ function pickem_home() {
 				);
 			}
 			else {
-				$pickems[$pid]->ui_actions[] = array(
-					'#type' => 'markup',
-					'#markup' => l(t('Join This Pickem'), sprintf('pickem/%s/join', $pickems[$pid]->pid), 
-						array(
-							'attributes' => array('class' => array('btn', 'btn-default'))
-						)
-					),
-				);
+				//if ($pickem->joindeadline >= time() && !$user_can_manage) {
+					$pickems[$pid]->ui_actions[] = array(
+						'#type' => 'markup',
+						'#markup' => l(t('Join This Pickem'), sprintf('pickem/%s/join', $pickems[$pid]->pid), 
+							array(
+								'attributes' => array('class' => array('btn', 'btn-default'))
+							)
+						),
+					);
+				//}
 			}
 			if ($user_can_manage) {
 				$pickems[$pid]->ui_actions[] = array(
@@ -815,9 +898,14 @@ function pickem_pickem_user_join_form($form, &$form_state, $pickem) {
 	$node_ids = taxonomy_select_nodes($pname_term->tid);
 	if (count($node_ids)) {		
 		$node = node_load($node_ids[0]);
+
+		$html_value = isset($node->body['und'][0]['safe_value']) ?
+			$node->body['und'][0]['safe_value'] :
+			$node->body['und'][0]['value'];
+			
 		$form['rules'] = array(
 			'#type' => 'markup',
-			'#markup' => 	$node->body['und'][0]['safe_value'],
+			'#markup' => 	$html_value,
 		);
 	}
 
@@ -873,22 +961,55 @@ function pickem_pickem_user_join_form_submit($form, &$form_state) {
 	
 	if ($values['op'] == 'Join') {
 		$controller = entity_get_controller('pickem');
-		$controller->addPlayer($user->uid, $user->name, $pickem->pid);
+		$player = $controller->addPlayer($user->uid, $user->name, $pickem->pid);
+		
+		$pickemPlayerController = entity_get_controller('pickem_player');
 
+		$week = $pickem->currentWeek(time());
+		
+		// how many weeks did this player miss..
+		$weeks_missed = $pickem->howManyWeeksMissed();
+		$pickemPlayerController->addMetaData($player, $pickem->pid, 'bye_count', $weeks_missed);
+		
+		$upcomingSlate = $pickem->getPickemSlateForWeek($week);
+		
+		foreach ($upcomingSlate as $slate_id => $slateEvent) {
+			
+			$pick_team_name = $pickem->determineDefaultPickTeamForPlayer($player, $slateEvent);
+			$pick = entity_create('pick', 
+				array(
+					'slid' => $slateEvent->slid, 
+					'pick_team_name' => $pick_team_name,
+					'playername' => $user->name,
+					'uid' => $user->uid,
+				)
+			);
+			if ($pick->save() === FALSE) {
+				drupal_set_message(
+					t('The system attempted to initialize your pick for @eventtitle, but failed.', 
+						array('@eventtitle' => $slateEvent->sportsEvent->displayTitle()))
+					);
+			}
+			
+		}
+		
 		drupal_set_message(t('You have been added to :pickem', array(':pickem' => $pickem->title)));
 		
-		#$role = user_role_load_by_name(sprintf('%s player', $pickem->name));
-		#dpm(array($role, sprintf('%s player', $pickem->name)));
-		#user_multiple_role_edit(array($user->uid), 'add_role', $role->rid);
-		
-		// save any field data specific to this user (player)
-		#$edit = (array) $user;
-		#$field_key = sprintf('%s_user_default_pick', $pickem->name);
-		#$edit[$field_key]['und'][0]['value'] = $values[$field_key]['und'][0]['value'];
-		#user_save($user, $edit);
-		
-		$form_state['redirect'] = 'pickem/' . $pickem->pid . '/slate';
+		// TODO -- account for previous weeks.
+		$form_state['redirect'] = 'pickem/' . $pickem->pid . '/join-success';
+		#$form_state['redirect'] = 'pickem/' . $pickem->pid . '/slate';
 	}
+}
+
+function pickem_user_joined_success($pickem) {
+	global $user;
+	
+	$week = $pickem->currentWeekObject();		// TODO create currentSlate or currentSection
+	$section_title = $week->title;
+	$current_section = $week->week;
+	return theme('joined-success', 
+		array('pickem' => $pickem, 'current_section' => $current_section, 'section_title' => $section_title)
+	);
 }
 
 function pickem_picks($week = NULL) {
@@ -913,7 +1034,8 @@ function pickem_picks($week = NULL) {
  */
 function pickem_block_view_alter(&$data, $block) {
 	if ($block->module == 'system' && $block->delta == 'powered-by') {
-		$data['content'] = t('Powered by The world\'s greatest college football fan.');
+		$data['content'] = t('A <a href="http://csnbbs.com">Collegiate Sports Network</a> affiliate') . '<br />' . 
+			t('Powered by ') . l(t('decro.net'), 'http://decro.net') . ' | ' . l(t('Contact the Site Admin'), 'user/1/contact');
 	}
 }	
 
@@ -1002,15 +1124,6 @@ function pickem_games_listing($form, &$form_state, $objtype = NULL, $objval = NU
 				),
 				'id' => 'slateCell-' . $record->gid,
 			);
-			/*
-			$row['data'][] = '<div id="slateCell-' . $record->gid . '">' . l(t($linktext), 'pickem/ajax/slate/' . $linkpath . '/' . $record->gid, 
-				array(
-					'attributes' => array(
-						'class' => array('slateTrigger','use-ajax')
-					)
-				)
-			) . '</div>';
-			*/
 		} else {
 			$row['data'][] = '&nbsp;';
 		}
@@ -1250,10 +1363,68 @@ function pickem_block_view($delta='') {
 	);
 }
 
+function pickem_user_view_alter(&$build) {
+	$user = $build['#account'];
+	if (empty($user->pickem_accounts)) {
+		return;
+	}
+	$build['pickems'] = array(
+		'#type' => 'container',
+		'#prefix' => '<h3>Pickem Contests</h3>',
+		'#attributes' => array('style' => 'margin-bottom: 1em'),
+	);
+	foreach ($user->pickem_accounts as $pickem_info) {
+		$build['pickems'][$pickem_info['pickem_name']] = array(
+			'#type' => 'markup',
+			'#markup' => '<div>' . l($pickem_info['title'], 'pickem/' . $pickem_info['pickem_id']) . '</div>',
+		);
+	}
+}
+
+function pickem_user_presave(&$edit, $account, $category) {
+	if ($edit['status'] == 1 && $account->status == 0) {
+		// user is in process of becoming unblocked
+		// update pickem_player record and set status = 1
+		db_update('pickem_player')
+		->fields(array(
+			'status' => 1
+		))
+		->condition('uid', $account->uid)
+		->execute();
+	}
+}
+
 function pickem_user_delete($account) {
 	db_delete('pick')
 		->condition('uid', $account->uid)
 		->execute();
+		
+	db_delete('pickem_player_week_metadata')
+		->condition('playername', $account->name)
+		->execute();
+		
+	db_delete('pickem_player_metadata')
+		->condition('playername', $account->name)
+		->execute();
+		
+	db_delete('pickem_player')
+		->condition('uid', $account->uid)
+		->execute();
+}
+
+function pickem_goto_current_slate($object, $context) {
+	global $user;
+	// if the user has pickems assigned, attempt to
+	// goto the current slate for the first pickem
+	if (isset($object->pickems) && ($object->pickems !== FALSE)) {
+		$first = array_shift(array_keys($object->pickems));
+		$pickem = pickem_load($first);
+		
+		drupal_goto(sprintf("pickem/%s/slate/%s", $first, $pickem->currentWeek()));
+	}
+	//if ($user->name == 'ecuacc4ever') {
+	//	dpm($object);
+	//}
 }
 
 function pickem_user_register_action($object, $context) {
@@ -1512,6 +1683,29 @@ function _pickem_cache_pick($pickem, $slid, $week, $objid, $objtype, $pkid, $tar
 	}
 	
 }
+
+function pickem_active_pickem_titles() {
+	$result = db_select('pickem', 'p')
+		->fields('p', array('pid', 'name', 'title'))
+		->condition('active', 1)
+		->orderBy('title')
+		->execute();
+		
+	$active_pickems = array();
+	foreach ($result as $p) {
+		$active_pickems[$p->pid] = t($p->title);
+	}	
+	return $active_pickems;
+}
+
+function pickem_form_page_title($pickem, $slate_week) {
+	return $pickem->title . ' - ' . $pickem->slate_weeks[$slate_week]->title;
+}
+
+function pickem_slate_page_title($pickem) {
+	return $pickem->title;
+}
+
 // ================== ENTITY FUNCTIONS =====================
 
 //// ---- LABEL CALLBACKS -----
@@ -1662,6 +1856,12 @@ function pickem_player_load($uid, $reset=FALSE) {
   return reset($pickem_player);
 }
 
+function pickem_players_load($uid, $reset=FALSE) {
+  $pickem_players = pickem_player_load_multiple(array($uid), array(), $reset);
+  return $pickem_players;
+}
+
+
 /**
  * Load multiple pickem players based on certain conditions.
  */
@@ -1681,4 +1881,63 @@ function pickem_player_delete(PickemPlayer $pickem_player) {
  */
 function pickem_player_delete_multiple(array $uids) {
   entity_get_controller('pickem_player')->delete($uids);
+}
+
+/**
+ * Autoload callback
+ */
+function pickem_player_result_load($uid, $reset=FALSE) {
+  $pickem_player_result = pickem_player_load_multiple(array($uid), array(), $reset);
+  return reset($pickem_player_result);
+}
+
+/**
+ * Load multiple pickem player results based on certain conditions.
+ */
+function pickem_player_result_load_multiple($uids = FALSE, $conditions = array(), $reset = FALSE) {
+  return entity_load('pickem_player_result', $uids, $conditions, $reset);
+}
+
+/**
+ * Deletes a Pickem Player Result.
+ */
+function pickem_player_result_delete(PickemPlayerResult $pickem_player_result) {
+  $pickem_player_result->delete();
+}
+
+/**
+ * Delete multiple pickem player results.
+ */
+function pickem_player_result_delete_multiple(array $uids) {
+  entity_get_controller('pickem_player_result')->delete($uids);
+}
+
+// standings table
+
+/**
+ * Autoload callback
+ */
+function standings_load($id, $reset=FALSE) {
+  $standings_row = standings_load_multiple(array($uid), array(), $reset);
+  return reset($standings_row);
+}
+/**
+ * Load multiple pickem players based on certain conditions.
+ */
+function standings_load_multiple($uids = FALSE, $conditions = array(), $reset = FALSE) {
+  return entity_load('standings', $uids, $conditions, $reset);
+}
+
+/**
+ * Deletes a Pickem Player.
+ */
+function standings_delete(Standings $standings_row) {
+  $standings_row->delete();
+}
+
+/**
+ * Delete multiple pickem players.
+ */
+function standings_delete_multiple(array $ids) {
+  entity_get_controller('standings')->delete($ids);
 }

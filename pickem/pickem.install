@@ -15,22 +15,6 @@ include_once(drupal_get_path('module', 'pickem') . '/pickem.fields.inc');
 function pickem_install() {
 	global $pickem;
 	
-	#variable_set('pickem.default_conference', 'acc');
-	#variable_set('pickem.protected_schools', array('louisville','notredame'));
-	#variable_set('pickem.current_season', 2013);
-	#variable_set('pickem.season_start', serialize($season_start));
-	
-	#_pickem_install_weeks_data();
-	#_pickem_load_pickems();
-	#_pickem_load_weeks();
-	#_pickem_load_conferences();
-
-	# temporarily store the schools as they are added to the database
-	# as we'll need to access data when adding games
-	#$tmp_school = array();
-	#_pickem_load_schools();
-	#_pickem_install_initial_games();
-	
 	foreach (_pickem_installed_fields() as $field) {
 		field_create_field($field);
 	}
@@ -203,6 +187,19 @@ function pickem_schema() {
 				),
 			),
 		),
+		'pickem_player_result' => array(
+			'description' => 'Pick results (correct, incorrect) for each player for a given week/session',
+			'fields' => array(
+				'rid' => array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE,),
+				'uid' => array('type' => 'int','unsigned' => TRUE,'not null' => TRUE,),
+				'playername' => array('type' => 'varchar','length' => 60,'not null' => TRUE,'default' => ''),
+				'correct' => array('type' => 'int', 'size' => 'tiny', 'default' => '0',),
+				'incorrect' => array('type' => 'int', 'size' => 'tiny', 'default' => '0',),
+				'week' => array('type' => 'int','unsigned' => TRUE,'not null' => TRUE,'default' => 0,),
+				'completed' => array('type' => 'varchar','length' => 1,'not null' => TRUE, 'default' => 'N'),
+				'pickem_id' => array('type' => 'int','unsigned' => TRUE,'not null' => TRUE,'default' => 0,),
+			) + entity_exportable_schema_fields(),
+		),
 		'pick_comment' => array(
 			'fields' => array(
 				'pcid' => array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE,),
@@ -241,51 +238,45 @@ function pickem_schema() {
 			) + entity_exportable_schema_fields(),
 			'primary key' => array('uid', 'pickem_id'),
 		),
+		'pickem_player_metadata' => array(
+			'fields' => array(
+				'playername' => array('type' => 'varchar','length' => 60,'not null' => TRUE,'default' => ''),
+				'pickem_id' => array('type' => 'int', 'not null' => TRUE, 'default' => 0,),
+				'metadata_key' => array('type' => 'varchar', 'length' => 40, 'not null' => TRUE, 'default' => ''),
+				'metadata_value' => array('type' => 'blob', 'size' => 'normal',),
+			) + entity_exportable_schema_fields(),
+			'primary key' => array('playername', 'pickem_id', 'metadata_key'),
+			'indexes' => array(
+				'playername' => array(array('playername', 4)),
+			),
+		),
+		'pickem_player_week_metadata' => array(
+			'description' => 'Records when a player makes his/her picks for a week',
+			'fields' => array(
+				'playername' => array('type' => 'varchar','length' => 60,'not null' => TRUE,'default' => ''),
+				'pickem_id' => array('type' => 'int', 'not null' => TRUE, 'default' => 0,),
+				'week' => array('type' => 'int','unsigned' => TRUE,'not null' => TRUE,'default' => 0,),
+				'last_picksave' => array('type' => 'int','not null' => FALSE,'default' => 0,),
+			) + entity_exportable_schema_fields(),
+			'primary key' => array('playername', 'pickem_id', 'week'),
+			'indexes' => array(
+				'playername' => array(array('playername', 4)),
+			),
+		),
 		'standings' => array(
 			'description' => 'Standings for the pickems',
-			'fields' => array(
-				'season' => array(
-					'type' => 'int',
-					'size' => 'small',
-					'not null' => TRUE,
-					'default' => 0,
-				),
-				'week' => array(
-					'type' => 'int',
-					'size' => 'tiny',
-					'not null' => TRUE,
-					'default' => 0,
-				),
-				'uid' => array(
-					'type' => 'int',
-					'unsigned' => TRUE,
-					'not null' => TRUE,
-				),
-				'correct' => array(
-					'type' => 'int',
-					'size' => 'tiny',
-					'unsigned' => TRUE,
-					'default' => 0,
-				),
-				'incorrect' => array(
-					'type' => 'int',
-					'size' => 'tiny',
-					'unsigned' => TRUE,
-					'default' => 0,
-				),
-				'pct' => array(
-					'type' => 'float',
-					'precision' => 4,
-					'scale' => 3,
-				),
-				'pickem_id' => array(
-					'type' => 'int',
-					'unsigned' => TRUE,
-					'not null' => TRUE,
-					'default' => 0,
-				),
-			),
-			'primary key' => array('season', 'week', 'uid', 'pickem_id')
+				'fields' => array(
+				'id' => array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE,),
+				'season' => array('type' => 'int','size' => 'small','not null' => TRUE,'default' => 0,),
+				'week' => array('type' => 'int','size' => 'tiny','not null' => TRUE,'default' => 0,),
+				'uid' => array('type' => 'int','unsigned' => TRUE,'not null' => TRUE,),
+				'playername' => array('type' => 'varchar','length' => 60,'not null' => TRUE,'default' => ''),
+				'correct' => array('type' => 'int','size' => 'tiny','unsigned' => TRUE,'default' => 0,),
+				'incorrect' => array('type' => 'int','size' => 'tiny','unsigned' => TRUE,'default' => 0,),
+				'pct' => array('type' => 'float','precision' => 4,'scale' => 3,),
+				'pickem_id' => array('type' => 'int','unsigned' => TRUE,'not null' => TRUE,'default' => 0,),
+			) + entity_exportable_schema_fields(),
+			'primary key' => array('id')
 		),
 		'tiebreaker' => array(
 			'fields' => array(
@@ -362,4 +353,89 @@ function pickem_update_7200() {
  */
 function pickem_update_7201() {
 	db_add_field('pickem_player', 'name', array('type' => 'varchar', 'length' => 60, 'not null' => TRUE, 'default' => ''));
+}
+
+/**
+ * Adds pickem_player_metadata and pickem_player_week_metadata tables
+ */
+function pickem_update_7202() {
+	
+	db_create_table('pickem_player_metadata', array(
+		'fields' => array(
+			'playername' => array('type' => 'varchar','length' => 60,'not null' => TRUE,'default' => ''),
+			'pickem_id' => array('type' => 'int', 'not null' => TRUE, 'default' => 0,),
+			'metadata_key' => array('type' => 'varchar', 'length' => 40, 'not null' => TRUE, 'default' => ''),
+			'metadata_value' => array('type' => 'blob', 'size' => 'normal',),
+		) + entity_exportable_schema_fields(),
+		'primary key' => array('playername', 'pickem_id', 'metadata_key'),
+		'indexes' => array(
+			'playername' => array(array('playername', 4)),
+		),
+	));
+	
+	db_create_table('pickem_player_week_metadata', array(
+		'description' => 'Records when a player makes his/her picks for a week',
+		'fields' => array(
+			'playername' => array('type' => 'varchar','length' => 60,'not null' => TRUE,'default' => ''),
+			'pickem_id' => array('type' => 'int', 'not null' => TRUE, 'default' => 0,),
+			'week' => array('type' => 'int','unsigned' => TRUE,'not null' => TRUE,'default' => 0,),
+			'last_picksave' => array('type' => 'int','not null' => FALSE,'default' => 0,),
+		) + entity_exportable_schema_fields(),
+		'primary key' => array('playername', 'pickem_id', 'week'),
+		'indexes' => array(
+			'playername' => array(array('playername', 4)),
+		),
+	));
+}
+
+/**
+ * Re-create the standings table such that it has a serial field as 
+ * primary key, allowing support for the entity api.
+ */
+function pickem_update_7203() {
+	db_drop_table('standings');
+	db_create_table('standings', array(
+		'description' => 'Standings for the pickems',
+		'fields' => array(
+			'id' => array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE,),
+			'season' => array('type' => 'int','size' => 'small','not null' => TRUE,'default' => 0,),
+			'week' => array('type' => 'int','size' => 'tiny','not null' => TRUE,'default' => 0,),
+			'uid' => array('type' => 'int','unsigned' => TRUE,'not null' => TRUE,),
+			'playername' => array('type' => 'varchar','length' => 60,'not null' => TRUE,'default' => ''),
+			'correct' => array('type' => 'int','size' => 'tiny','unsigned' => TRUE,'default' => 0,),
+			'incorrect' => array('type' => 'int','size' => 'tiny','unsigned' => TRUE,'default' => 0,),
+			'pct' => array('type' => 'float','precision' => 4,'scale' => 3,),
+			'pickem_id' => array('type' => 'int','unsigned' => TRUE,'not null' => TRUE,'default' => 0,),
+		) + entity_exportable_schema_fields(),
+		'primary key' => array('id')
+	));
+}
+
+/**
+ * Create pickem_player_results table
+ */
+function pickem_update_7204() {
+	db_create_table('pickem_player_result',
+		array(
+			'description' => 'Pick results (correct, incorrect) for each player for a given week/session',
+			'fields' => array(
+				'rid' => array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE,),
+				'uid' => array('type' => 'int','unsigned' => TRUE,'not null' => TRUE,),
+				'playername' => array('type' => 'varchar','length' => 60,'not null' => TRUE,'default' => ''),
+				'correct' => array('type' => 'int', 'size' => 'tiny', 'default' => '0',),
+				'incorrect' => array('type' => 'int', 'size' => 'tiny', 'default' => '0',),
+				'week' => array('type' => 'int','unsigned' => TRUE,'not null' => TRUE,'default' => 0,),
+				'completed' => array('type' => 'varchar','length' => 1,'not null' => TRUE, 'default' => 'N'),
+			) + entity_exportable_schema_fields(),
+			'primary key' => array('rid'),
+		)
+	);
+}
+
+
+/**
+ * Adds 'pickem_id' field to pickem_player_result table
+ */
+function pickem_update_7205() {
+  db_add_field('pickem_player_result', 'pickem_id', array('type' => 'int','unsigned' => TRUE,'not null' => TRUE,'default' => 0,));
 }

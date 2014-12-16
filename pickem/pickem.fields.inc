@@ -52,7 +52,9 @@ function _pickem_installed_instances() {
 	$pick_default_allowed_values = array(
 		'hometeam' => $t('Home Team'),
 		'visitingteam' => $t('Visiting Team'),
-		'topranked' => $t('Team with Highest Ranking'),
+		'topranked' => $t('Team with Highest AP Ranking'),
+		'topsagarin' => $t('Team with Highest Sagarin Rating'),
+		'favorite' => $t('Favored Team (if betting line exists'),
 	);
 	$instances = array();
 	$instances[] = array(

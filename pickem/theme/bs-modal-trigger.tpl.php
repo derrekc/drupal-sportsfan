@@ -6,5 +6,5 @@
 				<?php if ($title): ?>title="<?php print $title; ?>"<?php endif; ?>
 				pickem-id="<?php print $pickem_id; ?>"
 				<?php if ($target_entity_id): ?>target-entity-id="<?php print $target_entity_id; ?>"<?php endif; ?>>
-	<span class="glyphicon glyphicon-stats"></span>
+	<?php if ($glyphicon): ?><span class="glyphicon <?php print $glyphicon; ?>"></span><?php endif; ?>
 </button>

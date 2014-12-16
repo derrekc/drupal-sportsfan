@@ -7,7 +7,10 @@
  * stored here.
  */
 
-function pickem_batch_clear_picks_for_week($pickem, $week, &$context) {
+function pickem_batch_clear_picks_for_week($pickem_id, $week, &$context) {
+	$pickems = entity_load('pickem', array($pickem_id));
+	$pickem = reset($pickems);
+
 	$pickem_slate = $pickem->getPickemSlateForWeek($week);
 	
 	$num_deleted = db_delete('pick')
@@ -21,30 +24,16 @@ function pickem_batch_clear_picks_for_week($pickem, $week, &$context) {
 	$context['finished'] = 1;
 }
 
-function pickem_batch_setup_player_for_week($pickem, $player, $week, &$context) {
+function pickem_batch_setup_player_for_week($pickem_id, $player, $week, &$context) {
+	$pickems = entity_load('pickem', array($pickem_id));
+	$pickem = reset($pickems);
+
 	if (empty($context['sandbox'])) {
 		$context['sandbox']['progress'] = 0;
 		$context['sandbox']['max'] = 1;
 		$context['sandbox']['current_player'] = $player;
 	}
-	
-	$pickem_wrapper = entity_metadata_wrapper('pickem', $pickem);
-	$max_bye_weeks_allowed = $pickem_wrapper->max_bye_weeks_allowed->value();
-	$pick_default_pickem = $pickem_wrapper->pick_default->value();
-	
-	$player = pickem_player_load($player->uid);
-
-	$player_user = user_load($player->uid);
-	$user_wrapper = entity_metadata_wrapper('user', $player_user);
-	$pick_default_user = $user_wrapper->pick_default->value();
-	
-	if (!empty($pick_default_user)) {
-		$pick_default = $pick_default_user;
-	}
-	else {
-		$pick_default = $pick_default_pickem;
-	}
-	
+		
 	#if ($player->name == 'ecuacc4ever') {
 	#	$player->player_data['bye_count'] = $max_bye_weeks_allowed + 3;
 	#}
@@ -62,34 +51,20 @@ function pickem_batch_setup_player_for_week($pickem, $player, $week, &$context) 
 				'pick_team_name' => '',
 				'uid' => $player->uid,
 			);
-			
-			if ($player->player_data['bye_count'] < $max_bye_weeks_allowed) {
-				if ($pick_default == 'favorite') {
-					if ($slateEvent->sportsEvent->hasFavorite()) {
-						$values['pick_team_name'] = $slateEvent->sportsEvent->favorite;
-					} else {
-						// determine team with highest ranking
-					}
-				}
-				
-				// if 'pick_team_name' is still empty...?
-				if (empty($values['pick_team_name'])) {
-					$values['pick_team_name'] = ($pick_default == 'hometeam') 
-						? $slateEvent->sportsEvent->host_team_name 
-						: $slateEvent->sportsEvent->visiting_team_name;
-				}
-			}
-	
+							
+			// TODO move the above code to the model (Pickem or Pick)
+			$values['pick_team_name'] = $pickem->determineDefaultPickTeamForPlayer($player, $slateEvent);
+			$context['results'][] = 'Pick default is : ' . $values['pick_team_name'];
+			//$context['results'][] = 'Pick that would have been, or is created -- ' . print_r($values, TRUE);
 			$pick = entity_create('pick', $values);
 			$pick->save();
 		}
 	}
 	
 	if ($picksProcessed) {			
-			$context['results'][] = sprintf("%s was provisioned successfully", check_plain($player->name));
-		} else {
-			$context['results'][] = sprintf("%s was previously provisioned", check_plain($player->name));
-		}
+		$context['results'][] = sprintf("%s was provisioned successfully", check_plain($player->name));
+	} else {
+		$context['results'][] = sprintf("%s was previously provisioned", check_plain($player->name));
 	}
 	
 	// determine how many weeks this player missed.
@@ -103,7 +78,10 @@ function pickem_batch_setup_player_for_week($pickem, $player, $week, &$context) 
 	$context['finished'] = 1;
 }
 
-function pickem_batch_mark_pickem_week_open_status($pickem, $week, $status = 'Y', &$context) {
+function pickem_batch_mark_pickem_week_open_status($pickem_id, $week, $status = 'Y', &$context) {
+	$pickems = entity_load('pickem', array($pickem_id));
+	$pickem = reset($pickems);
+
 	db_update('week')
 		->fields(array(
 			'open' => $status,
@@ -134,4 +112,98 @@ function pickem_batch_setup_week_finished($success, $results, $operations) {
   }
   $_SESSION['my_batch_results'] = $items;
 
+}
+
+function pickem_batch_reset_standings($pickem, &$context) {
+	$num_deleted = db_delete('standings')
+		->condition('pickem_id', $pickem->pid)
+		//->condition('week', '-1')
+		->execute();
+		
+	$context['results'][] = t('Cleared the standings for: ' . $pickem->title);
+	$context['message'] = t('Cleared the standings for ' . $pickem->title);
+	$context['finished'] = 1;
+}
+
+function pickem_batch_create_standings_for_week($pickem_id, $week, &$context) {
+	$pickems = entity_load('pickem', array($pickem_id));
+	$pickem = reset($pickems);
+	
+	$affected_players = $pickem->playersWithSubmittedPicksForWeek($week);
+	$standings = array();
+	
+	$query = new EntityFieldQuery();
+	$query
+		->entityCondition('entity_type', 'standings', '=')
+		->propertyCondition('pickem_id', $pickem->pid, '=')
+		->propertyCondition('week', $week - 1, '=')
+		->propertyOrderBy('week', 'DESC');
+		
+	$result = $query->execute();
+	$player_to_doublecheck = array();
+	if (!empty($result['standings'])) {
+		// make a copy of each standings row 
+		$prev_standings = standings_load_multiple(array_keys($result['standings']));
+		foreach ($prev_standings as $prev) {
+			drush_print('processing ' . $prev->playername);
+			$player_result = $pickem->player_results_by_uid[$week][$prev->uid];
+			if ($player_result == NULL) {
+				$player_to_doublecheck[] = $prev->playername;
+				continue;
+			}
+			drush_print_r($player_result);
+			$player = $pickem->playersByUID[$player_result->uid];
+			
+			$newrow = Standings::newStandingsRowForPickemPlayer($pickem, $player, $week);
+			#$pickem_result = $player->pickemResultForWeek($pickem->pid, $week);
+			$newrow->correct = $prev->correct + $player_result->correct;
+			$newrow->incorrect = $prev->incorrect + $player_result->incorrect;
+			$newrow->save();
+			$context['results'][] = t(sprintf("++Standings Record for %s: %s-%s", $newrow->playername, $newrow->correct, $newrow->incorrect));
+			
+			$player_result->completed = 'Y';
+			$player_result->save();
+		}
+		drush_print_r($player_to_doublecheck);
+	}
+	else {
+		// create new standings
+		foreach ($affected_players as $p) {
+			// create standings entity instance
+			$standings[$p->uid] = Standings::newStandingsRowForPickemPlayer($pickem, $p, $week);
+			$pickem_result = $p->pickemResultForWeek($pickem->pid, $week);
+			if ($pickem_result) {
+				$standings[$p->uid]->correct = $pickem_result->correct;
+				$standings[$p->uid]->incorrect = $pickem_result->incorrect;
+				//$standings[$p->uid]->pct = number_format((float) ($pickem_result->correct / ($pickem_result->correct + $pickem_result->incorrect)) * 100.0, 3);
+				$context['results'][] = t(sprintf("Standings Record for %s: %s-%s", $standings[$p->uid]->playername, $standings[$p->uid]->correct, $standings[$p->uid]->incorrect));
+				$standings[$p->uid]->save();
+				
+				// mark the pickem_result as completed, too
+				$pickem_result->completed = 'Y';
+				$pickem_result->save();
+			}
+		}
+	}
+}
+
+function pickem_batch_close_player_for_week($pickem_id, $player, $week, &$context) {
+	$pickems = entity_load('pickem', array($pickem_id));
+	$pickem = reset($pickems);
+	
+	// if a player doesn't have an entry for his/her week "metadata"
+	// then increase his/her 'bye_count' in the metadata
+	//if ($week_metadata === FALSE || empty($week_metadata->last_savepick)) {
+	//$week_metadata = $player->weekMetadataForPickem($pickem->pid);
+	
+	if (!$player->submittedPicksForWeek($pickem->pid, $week)) {
+		$bye_count = (int) $player->metadataValue('bye_count', $pickem->pid, 0) + 1;
+		$controller = entity_get_controller('pickem_player');
+		$context['results'][] = t($player->name . ' did not submit his/her picks and will be assessed a "Bye Week"');
+		$context['results'][] = $controller->addMetaData($player, $pickem->pid, 'bye_count', $bye_count);	// TRUE = 'test only'
+	}
+	else {
+		$context['results'][] = t($player->name . ' submitted picks this week');
+	}
+	return;
 }

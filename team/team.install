@@ -19,12 +19,25 @@ function team_schema() {
 				'conf_name' => array('type' => 'varchar','length' => '15','not null' => TRUE, 'default' => ''),
 				'conf_division' => array('type' => 'varchar','length' => 25,),
 				'active' => array('type' => 'int','size' => 'tiny','not null' => TRUE,'default' => 1,),
+				'twitter_hashtag' => array('type' => 'varchar', 'length' => 15,),
 			) + entity_exportable_schema_fields(),
 			'primary key' => array('tid'),
 			'indexes' => array(
 				'machine_name' => array(array('name', 5)),
 				'conf_name' => array(array('conf_name', 3)),
 				'league' => array(array('league', 3)),		
+			)
+		),
+		'team_color' => array(
+			'fields' => array(
+				'tcid' => array('type' => 'serial', 'not null' => TRUE, 'unsigned' => TRUE),
+				'team_name' => array('type' => 'varchar','length' => 35,'not null' => TRUE,'default' => '',),
+				'tag' => array('type' => 'varchar', 'length' => 15,),
+				'color_value' => array('type' => 'varchar', 'length' => 6, 'not null' => TRUE, 'default' => '',),
+			),
+			'primary key' => array('tcid'),
+			'indexes' => array(
+				'team_name' => array(array('team_name', 5)),
 			)
 		),
 		'conference' => array(
@@ -87,4 +100,27 @@ function team_schema() {
  */
 function team_update_7201() {
 	db_change_field('team', 'sportsbook_name', 'sportsbook_name', array('type' => 'text','size' => 'big',));
+}
+
+function team_update_7202() {
+	db_add_field('team', 'twitter_hashtag', array('type' => 'varchar', 'length' => 15));
+}
+
+/**
+ * Add team_color table
+ */
+function team_update_7203() {
+	db_create_table('team_color', array(
+			'fields' => array(
+				'tcid' => array('type' => 'serial', 'not null' => TRUE, 'unsigned' => TRUE),
+				'team_name' => array('type' => 'varchar','length' => 35,'not null' => TRUE,'default' => '',),
+				'tag' => array('type' => 'varchar', 'length' => 15,),
+				'color_value' => array('type' => 'varchar', 'length' => 6, 'not null' => TRUE, 'default' => '',),
+			),
+			'primary key' => array('tcid'),
+			'indexes' => array(
+				'team_name' => array(array('team_name', 5)),
+			)
+		)
+	);
 }

@@ -8,7 +8,7 @@
 	<div class="col-xs-5 col-md-4">
 		<?php print render($slate_event['pick_team_name']); ?>
 	</div>
-	<div class="col-xs-1 col-md-1">
-		<?php print render($slate_event['show-pick-stats']); ?>
-	</div>
+	
+	<?php /* render additional buttons defined in the form building page callback */ ?>
+	<?php print render($slate_event['additional_buttons']); ?>
 </div>

@@ -75,6 +75,12 @@
 				})
 			});
 			
+			// toggle the display of the point spreads
+			$('.ptspread-toggle').on('click', function(evt) {
+				$('.ptspread').toggle();	
+				return evt.preventDefault();
+			});
+			
 			/**
 			 * Prepare the Slate Pick Stats modal 
 			 */
@@ -86,6 +92,9 @@
 						var $modal = $( this );
 						
 						$( '#playerPicksTab a:first').tab('show');
+						$( '.progress', $modal ).show();
+						$( '.pleaseWaitP', $modal ).show();
+						$(' .statsView', $modal ).hide();
 						
 						$.ajax({
 							url : '/pickem/' + pickemID + '/slate/pick-stats/' + slateID,
@@ -93,15 +102,15 @@
 								$( '.total-picks', $modal ).text(data.pick_count );
 								$( '.visitor', $modal ).text( data.visitor_name );
 								$( '.visitor-pick-count', $modal ).text( data.visitor_pick_count );
-								$( '.visitor-percent-picked', $modal ).text( data.visitor_pick_percent_format );
+								$( '.visitor-percent-picked', $modal ).text( data.visitor_pick_percent_format + '%' );
 								$( '.visitor-picks-label', $modal ).text( data.visitor_name );
-								$( '.visitor-picks', $modal ).text( data.visitor_picks_playername );
+								$( '.visitor-picks', $modal ).html( data.visitor_picks_playername );
 								
 								$( '.host', $modal ).text( data.host_name );
 								$( '.host-pick-count', $modal ).text( data.host_pick_count );
-								$( '.host-percent-picked', $modal ).text( data.host_pick_percent_format );
+								$( '.host-percent-picked', $modal ).text( data.host_pick_percent_format + '%' );
 								$( '.host-picks-label', $modal ).text( data.host_name );
-								$( '.host-picks', $modal ).text( data.host_picks_playername );
+								$( '.host-picks', $modal ).html( data.host_picks_playername );
 								
 								$visitor_logo = $( '<img />' )
 									.attr('src', data.visitor_logo_url)
@@ -112,6 +121,10 @@
 									.attr('src', data.host_logo_url)
 									.attr('height', '32');
 								$( '.host-logo', $modal ).append( $host_logo );
+								
+								$( '.progress', $modal ).hide();
+								$( '.pleaseWaitP', $modal ).hide();
+								$( '.statsView', $modal ).show();
 							}
 						})
 					})
@@ -132,6 +145,15 @@
 						$( '.host-picks', $modal ).text( '' );
 					})
 			;
+			
+			$('.scoretweet-trigger')
+				.popover({
+					containter : 'body',
+					trigger : 'click focus'
+				})
+				.on('click', function(e) {
+					return e.preventDefault();
+				});
 		}
 	}
 })(jQuery);

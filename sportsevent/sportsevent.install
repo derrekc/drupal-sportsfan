@@ -24,6 +24,7 @@ function sportsevent_schema() {
 				'visiting_conf_name' => array('type' => 'varchar','length' => 15,),
 				'neutral' => array('type' => 'varchar','length' => 1,'not null' => TRUE,'default' => 'N',),
 				'location' => array('type' => 'varchar','length' => 128,),
+				'venue_id' => array('type' => 'int', 'unsigned' => TRUE,),
 				'betting_line' => array('type' => 'varchar','length' => '50',),
 				'favorite' => array('type' => 'varchar', 'length' => 35,),
 				'money_line' => array('type' => 'int', 'unsigned' => FALSE,),
@@ -32,6 +33,8 @@ function sportsevent_schema() {
 				'stats_processed' => array('type' => 'int', 'default' => 0,),
 				'tv' => array('type' => 'varchar', 'length' => 20,),
 				'event_data' => array('type' => 'blob', 'size' => 'normal',),
+				'twitter_hashtag' => array('type' => 'varchar', 'length' => 20,),
+				'summary_url' => array('type' => 'text', 'size' => 'normal','default' => '',),
 			) + entity_exportable_schema_fields(),
 			'indexes' => array(
 				'host_team' => array(array('host_team_name', 5)),
@@ -142,4 +145,60 @@ function sportsevent_schema() {
 function sportsevent_update_7200() {
 	db_add_field('sportsevent', 'favorite', array('type' => 'varchar', 'length' => 35,));
 	db_add_field('sportsevent', 'money_line', array('type' => 'int', 'unsigned' => FALSE,));
+}
+
+/**
+ * Adds Twitter hashtag column to sportsevent table
+ */
+function sportsevent_update_7201() {
+	db_add_field('sportsevent', 'twitter_hashtag', array('type' => 'varchar', 'length' => 20,));
+}
+
+/**
+ * Add venue_id to sportsevent table
+ */
+function sportsevent_update_7202() {
+	db_add_field('sportsevent', 'venue_id', array('type' => 'int', 'unsigned' => TRUE,));
+}
+
+/**
+ * Update ACC-hosted games with newly added venue data
+ */
+function sportsevent_update_7204() {
+	$vmap = array('bostoncollege'=>1,'clemson'=>2,'duke'=>3,'georgiatech'=>4,'fsu'=>5,'louisville'=>6,'miami'=>7,'northcarolina'=>8,'ncstate'=>9,
+		'pitt'=>10,'syracuse'=>11,'virginia'=>13,'vatech'=>14,'wakeforest'=>15);
+	
+	foreach($vmap as $school => $venue_id) {
+		$num_upated = db_update('sportsevent')
+			->fields(array(
+				'venue_id' => $venue_id,
+			))
+			->condition('sport', 'ncaaf')
+			->condition('host_team_name', $school)
+			->condition('neutral', 'N')
+			->execute();
+			
+		drush_log(sprintf("%s row(s) affected.", $num_upated), 'ok');
+	}
+}
+
+/**
+ * Update SEC-hosted games with newly added venue data
+ */
+function sportsevent_update_7205() {
+	$vmap = array('alabama'=>16,'auburn'=>17,'arkansas'=>18,'florida'=>20,'georgia'=>21,'kentucky'=>22,'lsu'=>23,
+		'olemiss'=>24,'mississippistate'=>25,'missouri'=>26,'southcarolina'=>27,'tennessee'=>28,'texasam'=>29,'vanderbilt'=>30);
+	
+	foreach($vmap as $school => $venue_id) {
+		$num_upated = db_update('sportsevent')
+			->fields(array(
+				'venue_id' => $venue_id,
+			))
+			->condition('sport', 'ncaaf')
+			->condition('host_team_name', $school)
+			->condition('neutral', 'N')
+			->execute();
+			
+		drush_log(sprintf("%s row(s) affected.", $num_upated), 'ok');
+	}
 }

@@ -98,7 +98,29 @@ function team_menu() {
     'access arguments' => array('administer team entities'),
     'type' => MENU_NORMAL_ITEM,
   );
-
+	$items['teams/%/%team'] = array(
+		'title callback' => 'team_label_callback',
+		'title arguments' => array(2),
+		'page callback' => 'team_sport_schedule',
+		'file' => 'team.page.inc',
+		'page arguments' => array(2, 1),
+		'access callback' => TRUE,
+	);
+	
+	$items['teams/%/future/%team'] = array(
+		'title callback' => 'team_label_callback',
+		'title arguments' => array(3),
+		'page callback' => 'team_sport_future_schedule',
+		'file' => 'team.page.inc',
+		'page arguments' => array(3, 1),
+		'access callback' => TRUE,
+	);
+	$items['ncaaf-future-schedules'] = array(
+		'title' => 'College Football Future Schedules',
+		'page callback' => 'team_ncaaf_future_schedules',
+		'access callback' => TRUE,
+		'file' => 'team.page.inc',
+	);
   return $items;
 }
 
@@ -133,6 +155,7 @@ function team_permission() {
     ),
   );
 }
+
 /**
  * Check access permission for Team Entity UI.
  */
@@ -171,12 +194,15 @@ function team_access_callback() {
 /**
  * Implements hook_theme().
  */
-function team_theme() {
+function team_theme($existing, $type, $theme, $path) {
   return array(
     'team_full' => array(
       'variables' => array('team' => NULL),
       'file' => 'includes/team.theme.inc',
     ),
+    'ncaaf_future_schedules' => array(
+    	'template' => 'themes/ncaaf-future-schedules',
+		)
   );
 }
 
@@ -184,7 +210,7 @@ function team_theme() {
 /**
  * Label callback for team entities
  */
-function team_label_callback($team, $type) {
+function team_label_callback($team, $type = NULL) {
 	return empty($team->name) ? 'Untitled Team' : $team->displaytitle;	
 }
 
@@ -211,8 +237,15 @@ function conference_basic_uri($conference) {
  * Menu autoloader for /team.
  */
 function team_load($team_id, $reset = FALSE) {
-  $team = team_load_multiple(array($team_id), array(), $reset);
-  return reset($team);
+	if (is_numeric($team_id)) {
+		$teams = team_load_multiple(array($team_id), array(), $reset);
+		$team = reset($team);
+	} else {
+		$team = team_load_by_name($team_id);
+	}
+  #$team = team_load_multiple(array($team_id), array(), $reset);
+  #return reset($team);
+  return $team;
 }
 
 /**
@@ -229,6 +262,15 @@ function team_load_by_name($tname) {
 	$teams = team_load_multiple(FALSE, array('name' => $tname));
 	return reset($teams);
 }
+
+/**
+ * Load team by name
+ */
+function team_load_multiple_by_conf($conf) {
+	$teams = team_load_multiple(FALSE, array('conf_name' => $conf));
+	return $teams;
+}
+
 /**
  * Deletes a Team.
  */

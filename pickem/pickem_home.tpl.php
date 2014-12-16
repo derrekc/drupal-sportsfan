@@ -1,3 +1,4 @@
+<h2>Home of the College Pickem Contests</h2>
 <?php if (!$user_is_logged_in): ?>
 	<div class="panel panel-info">
 	  <div class="panel-heading">
@@ -11,5 +12,8 @@
 	  </div>
 	</div>
 <?php endif; ?>
-<?php print $pickem_content['active_pickems']; ?>
-
+<div class="panel panel-info">
+	<div class="panel-body">
+	<?php print $pickem_content['active_pickems']; ?>
+	</div>
+</div>

@@ -49,10 +49,10 @@ function pickem_pick_stats($pickem, $slate_event) {
 	$results['visitor_name'] = $opponents['visitor']->displaytitle;
 	$results['visitor_pick_count'] = count($slate_event->picks_by_team[$opponents['visitor']->name]);
 	$results['visitor_pick_percent'] = ($results['visitor_pick_count'] / $results['pick_count']) * 100;
-	$results['visitor_pick_percent_format'] = number_format($results['visitor_pick_percent'], 1);
+	$results['visitor_pick_percent_format'] = number_format($results['visitor_pick_percent'], 0);
 	$results['visitor_logo_url'] = base_path() . drupal_get_path('module', 'team') . '/logos/ncaaf/' . $slate_event->getSportsEvent()->visiting_team_name . '.gif';
 	if (count($slate_event->picks_by_team[$opponents['visitor']->name])) {
-		$results['visitor_picks_playername'] = implode(', ', $slate_event->picks_by_team[$opponents['visitor']->name]);
+		$results['visitor_picks_playername'] = implode('<br />', $slate_event->picks_by_team[$opponents['visitor']->name]);
 	}
 	else {
 		$results['visitor_picks_playername'] = '-';
@@ -61,10 +61,10 @@ function pickem_pick_stats($pickem, $slate_event) {
 	$results['host_name'] = $opponents['host']->displaytitle;
 	$results['host_pick_count'] = count($slate_event->picks_by_team[$opponents['host']->name]);
 	$results['host_pick_percent'] = ($results['host_pick_count'] / $results['pick_count']) * 100;
-	$results['host_pick_percent_format'] = number_format($results['host_pick_percent'], 1);
+	$results['host_pick_percent_format'] = number_format($results['host_pick_percent'], 0);
 	$results['host_logo_url'] = base_path() . drupal_get_path('module', 'team') . '/logos/ncaaf/' . $slate_event->getSportsEvent()->host_team_name . '.gif';
 	if (count($slate_event->picks_by_team[$opponents['host']->name])) {
-		$results['host_picks_playername'] = implode(', ', $slate_event->picks_by_team[$opponents['host']->name]);
+		$results['host_picks_playername'] = implode('<br />', $slate_event->picks_by_team[$opponents['host']->name]);
 	}
 	else {
 		$results['host_picks_playername'] = '-';

@@ -2,12 +2,6 @@
 
 function pickem_drush_command() {
 	$items = array();
-
-	$items['pickem-load-lines'] = array(
-		'description' => 'Load Betting Lines from XML RSS feed',
-		'aliases' => array('pklines'),
-		'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
-	);
   $items['import-pickems'] = array(
     'callback' => 'pickem_import_pickem_google_data',
     'description' => dt('Import Pickems from Google Spreadsheet.'),
@@ -59,15 +53,78 @@ function pickem_drush_command() {
 		'aliases' => array('accproj'),
 		'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
 	);
+	$items['forecast-standings'] = array(
+		'description' => 'Forecast the final conference standings.',
+		'callback' => 'pickem_forecast_standings',
+		'aliases' => array('forecast'),
+		'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
+		'required-arguments' => 1,
+		'arguments' => array(
+			'conf_name' => 'Name of the conference (e.g. acc)',
+		),
+		'options' => array(
+			'division' => array(
+				'desciption' => 'Target Division within specified conference'
+			),
+		),
+	);
 	$items['export-schools'] = array(
 		'description' => 'Export schools to master "team" file',
 		'aliases' => array('expsch'),
+		'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
+	);
+	$items['add-event-to-slate'] = array(
+		'callback' => 'pickem_add_event_to_slate',
+		'options' => array(
+			'pickem_id' => array(
+				'description' => 'ID of pickem',
+				'example_value' => '1',
+				'required' => TRUE,
+			),
+			'week' => array(
+				'description' => 'Week to start with',
+			),
+		),
+		'aliases' => array('add2slate'),
 		'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
 	);
 	$items['run-batch'] = array(
 		'callback' => 'drush_pickem_run_batch',
 		'aliases' => array('prun'),
 		'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
+	);
+	$items['open-week'] = array(
+		'description' => 'Open/Initialize results for a Pickem week',
+		'callback' => 'drush_pickem_open_week',
+		'aliases' => array('pkop'),
+		'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
+		'required-arguments' => 2,
+		'arguments' => array(
+			'pid' => 'ID of the target Pickem',
+			'week' => 'Week the events are played',
+		),
+	);
+	$items['close-week'] = array(
+		'description' => 'Close/Finalize results for a Pickem week',
+		'callback' => 'drush_pickem_close_week',
+		'aliases' => array('pkcl'),
+		'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
+		'required-arguments' => 2,
+		'arguments' => array(
+			'pid' => 'ID of the target Pickem',
+			'week' => 'Week the events are played',
+		),
+	);
+	$items['add-pickem-player'] = array(
+		'description' => 'Add Player to Pickem',
+		'callback' => 'drush_pickem_add_player',
+		'aliases' => array('pkap'),
+		'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
+		'required-arguments' => 2,
+		'arguments' => array(
+			'pid' => 'ID of the target Pickem',
+			'users' => 'Comma-separated list of players (name or id)',
+		),
 	);
 	return $items;
 }
@@ -264,6 +321,100 @@ function drush_pickem_run_batch() {
 			array('drush_pickem_run_batch_op_2', array('Thank you for your participation!')),
 		),
 		'file' => drupal_get_path('module', 'pickem') . '/pickem.drush.inc',
+		'finished' => 'drush_pickem_batch_finished',
+	);
+	batch_set($batch);
+	$batch =& batch_get();
+	$batch['progressive'] = FALSE;
+	
+	drush_backend_batch_process();
+}
+
+function drush_pickem_open_week($pid, $week) {
+	$pickems = entity_load('pickem', array($pid));
+	$pickem = reset($pickems);
+	
+	$operations = array();
+	foreach ($pickem->players as $player) {
+		$operations[] = array('pickem_batch_setup_player_for_week', array($pickem->pid, $player, $week));
+	}
+	
+	$operations[] = array('pickem_batch_mark_pickem_week_open_status', array($pickem->pid, $week, 'Y'));
+
+	$batch = array(
+		'operations' => $operations,
+		'title' => t('Processing players for the end of the week'),
+		'init_message' => t('Initializing for Week ' . $week),
+		'file' => drupal_get_path('module', 'pickem') . '/pickem.batch.inc',
+		'finished' => 'drush_pickem_batch_finished',
+	);
+	batch_set($batch);
+	$batch =& batch_get();
+	$batch['progressive'] = FALSE;
+	
+	drush_backend_batch_process();
+	
+}
+
+function drush_pickem_add_player($pid, $users) {
+	drush_print('Loading pickem.  Please wait...');
+	$pickem = pickem_load($pid);
+	
+	$controller = entity_get_controller('pickem');
+
+	$players = array();
+	$user_names_ids = preg_split('/,\s*/', $users);
+	drush_print_r($user_names_ids);
+	foreach ($user_names_ids as $u) {
+		$aUser = FALSE;
+		if (is_int($u)) {
+			$aUser = user_load($u);
+		}
+		else {
+			$aUser = user_load_by_name($u);
+		}
+		drush_log(sprintf("User '%s (%s) loaded successfully", $aUser->name, $aUser->uid), 'ok');
+		
+		$player = $controller->addPlayer($aUser->uid, $aUser->name, $pickem->pid);
+		
+		drush_print('Creating initial standings record...');
+		db_insert('standings')
+		->fields(array(
+			'id' => NULL,
+			'season' => $pickem->season,
+			'week' => 0,
+			'uid' => $aUser->uid,
+			'playername' => $aUser->name,
+			'correct' => 0,
+			'incorrect' => 0,
+			'pct' => 0.0,
+			'pickem_id' => $pickem->pid,
+			'status' => 1,
+			'module' => NULL,
+		))
+		->execute();
+		drush_log('Standings record created...', 'ok');
+	}
+}
+
+function drush_pickem_close_week($pid, $week) {
+	$pickems = entity_load('pickem', array($pid));
+	$pickem = reset($pickems);
+	
+	$operations = array();
+	drush_log(count($pickem->players) . " player(s) found", 'ok');
+	foreach ($pickem->players as $player) {
+		$operations[] = array('pickem_batch_close_player_for_week', array($pid, $player, $week));
+	}
+
+	$operations[] = array('pickem_batch_create_standings_for_week', array($pid, $week));
+	$operations[] = array('pickem_batch_mark_pickem_week_open_status', array($pid, $week, 'N'));
+
+	$batch = array(
+		'operations' => $operations,
+		'title' => t('Processing players for the end of the week'),
+		'init_message' => t('Initializing for Week ' . $week),
+		'file' => drupal_get_path('module', 'pickem') . '/pickem.batch.inc',
 		'finished' => 'drush_pickem_batch_finished',
 	);
 	batch_set($batch);
@@ -845,80 +996,6 @@ function drush_pickem_refresh_schools() {
 	}
 }
 
-function drush_pickem_load_lines() {
-	$cmd = 'wget -O ' 
-		. drupal_get_path('module', 'pickem') . '/data/ncaalines.xml "' 
-		. variable_get('pickem.betting_lines_rss_feed_url') . '"';
-		
-	$out = `$cmd`;
-	
-	$xmlurl = drupal_get_path('module', 'pickem') . '/data/ncaalines.xml';
-	$content = file_get_contents($xmlurl);
-
-	$items = array();
-	try {
-		$xml = new SimpleXMLElement($content);
-	} catch(Exception $e) {
-		return drush_set_error('PICKEM_LOAD_LINE', dt($e->getMessage()));
-	}
-
-	$items = $xml->xpath('/rss/channel/item');
-	foreach ($items as $item) {
-		$game_title = (string) $item->title;
-		$item_desc = (string)$item->description;
-		$opponents = array();
-
-		# get the schools involved
-		$matches = array();
-		$bool = preg_match('/^\[.+\]\s*(?P<team1>\w+)(\([Nn]\))*\s@\s(?P<team2>\w+)(\([nN]\))*$/', $game_title, $matches);
-		#drush_print($game_title);
-		#drush_print_r($matches);
-
-		$result = db_query('SELECT name, sportsbook_name FROM {school} where sportsbook_name = :sbname', array(':sbname' => $matches['team1']));
-		$team1 = $result->fetchObject();
-		$opponents[$team1->sportsbook_name] = $team1;
-		$result = db_query('SELECT name, sportsbook_name FROM {school} WHERE sportsbook_name = :sbname', array(':sbname' => $matches['team2']));
-		$team2 = $result->fetchObject();
-		$opponents[$team2->sportsbook_name] = $team2;
-
-		$bool = preg_match('/^(?P<favorite>\w+)(\([nN]\))*\s(?P<bline>(?P<b_operand>[\-\+]*)(?P<spread>[\d.]+))\s.+$/', $item_desc, $bline_matches);
-		drush_print_r($team1);
-		drush_print_r($team2);
-
-		$query = db_select('game', 'g');
-		$query->fields('g');
-		$query->condition('host_school_name', array($team1->name, $team2->name), 'IN');
-		$query->condition('visiting_school_name', array($team1->name, $team2->name), 'IN');
-		$query->condition('completed', 'N');
-		$result = $query->execute();
-		$o = $result->fetchObject();
-		if ($o) {
-			#$favoriteSchool = $opponents[$favorite]->name;
-
-			$favorite = $bline_matches['favorite'];
-			$bline = $bline_matches['bline'];
-			if ($bline_matches['b_operand'] == '-') {
-				$favoriteSchool = $opponents[$favorite]->name;		
-			} else if ($bline_matches['b_operand'] == '+') {
-				if ($bline_matches['favorite'] == $matches['team1']) {
-					$favoriteSchool = $opponents[$matches['team2']]->name;
-				} else {
-					$favoriteSchool = $opponents[$matches['team1']]->name;
-				}
-			}
-			$o->betting_line = $favoriteSchool . ':-' . trim($bline_matches['spread']);		
-			
-			drush_print("%%%%%%%% favorite school is [" . $favoriteSchool . "] %%%%%%%%%%%%");
-			#$o->betting_line = $favoriteSchool . ':' . trim($bline);
-			drupal_write_record('game', $o, 'gid');
-		} else {
-			#drush_print('No fetched data');
-			#drush_print_r($bline_matches);
-		}	
-	}	
-	variable_set('pickem.bettinglines_updated', date('M j, Y -- g:i A'));
-}	
-
 function drush_pickem_import_fb_poll($week, $season) {
 	if ($season == '') {
 		$season = variable_get('pickem.current_season');
@@ -1013,6 +1090,99 @@ function permute_standings() {
 
 $DEBUG = FALSE;
 $games_of_interest = array();
+
+function pickem_forecast_standings($conf_name) {
+
+	$standings = array();
+
+	$file = drupal_get_path('module', 'sportsfan') . '/data/standings_table.tsv';
+	if (($handle = fopen($file, 'r')) !== FASLE) {
+		$current_division = '';
+		$current_conf = '';
+		
+		while ($row = fgetcsv($handle, 1024, "\t")) {
+			//drush_print_r($row);
+			$cmatch = array();
+			$dmatch = array();
+
+			if (preg_match('/^conf:(?P<conf_name>\w+)$/', $row[0], $cmatch) == 1) {
+				//drush_print_r($cmatch);
+				$standings['conf'] = $cmatch['conf_name'];
+				$current_conf = $cmatch['conf_name'];
+				$current_division = $cmatch['conf_name'];
+
+			} elseif (preg_match('/^division:(?P<division_name>\w+)$/', $row[0], $dmatch) == 1) {
+
+				if (!isset($standings['division'])) {
+					$standings['division'] = array();
+				}
+				$standings['division'][ $dmatch['division_name'] ] = array();
+				$current_division = $dmatch['division_name'];
+				
+			} else {
+				// school table row
+				$t = array();
+				$t['team_name'] = $row[0];
+				$t['w'] = $row[1];
+				$t['l'] = $row[2];
+				$t['cw'] = $row[3];
+				$t['cl'] = $row[4];
+				$t['dw'] = $row[5];
+				$t['dl'] = $row[6];
+				$t['cwins'] = $row[7];
+				$t['closses'] = $row[8];
+				$t['dwins'] = $row[9];
+				$t['dlosses'] = $row[10];
+
+				$standings['division'][$current_division][] = $t;
+				unset($t);
+			}
+		}
+	}
+	drush_print_r($standings);
+
+	// OK that's the standings initialized.
+	// let's determine the number of games and that BIG NUMBER
+
+	$results = db_select('sportsevent', 's')
+		->fields('s', array('visiting_team_name', 'host_team_name', 'visiting_conf_name', 'host_conf_name'))
+		->condition('visiting_conf_name', $conf_name)
+		->condition('host_conf_name', $conf_name)
+		->condition('completed', array('N','n'), 'IN')
+		->condition('sport', 'ncaaf')
+		->condition('season', '2014')
+		->orderBy('event_date', 'ASC')
+		->execute();
+
+	drush_print(sprintf("Number of games = [%s]", $results->rowCount()));
+
+	$index = 0;
+	$scenario_games = array();
+	foreach ($results as $g) {
+		if (($conf_name != 'acc') || ($conf_name == 'acc' 
+			&& !in_array('notredame', array($g->visiting_team_name, $g->host_team_name)))) {
+
+			array_unshift($scenario_games, $g);
+			drush_print(sprintf("new Game('%s','%s');", 
+				$g->visiting_team_name, $g->host_team_name)
+			);
+		}
+	}
+	drush_print('Number of scenario games = [' . count($scenario_games) . ']');
+	$scenarios = pow(2, count($scenario_games));
+	drush_print('Number of scenarios = [' . $scenarios . ']');
+
+	unset($results);
+	#$big_hex = dechex($scenarios);
+	#drush_print($big_hex);
+
+	#for ($i = 0; $i < $scenarios; $i++) {
+		#$k = decbin($i);
+		#$s[$k] = FALSE;
+	#}
+
+	drush_print('done');
+}
 
 function drush_pickem_project_acc() {
 	global $games_of_interest;
@@ -1607,4 +1777,128 @@ function overall_winning_pct(&$first_place, &$s, &$why) {
 		return TRUE;
 	}
 	return FALSE;
+}
+
+function pickem_add_event_to_slate() {
+	$pickem_id = drush_get_option('pickem_id');
+	
+	$pickem = pickem_load($pickem_id);
+	drush_print($pickem->title);
+	$week = drush_get_option('week', $pickem->currentWeek(time()));
+	$slate_week = $pickem->getSlateWeek($week);
+
+	//$affected_players = array();
+	$affected_players = $pickem->playersWithSubmittedPicksForWeek($week);	
+	//foreach ($pickem->players as $uid => $player) {
+	//	if ($player->submittedPicksForWeek($pickem_id, $week)) {
+	//		$affected_players[$uid] = $player;
+	//	}
+	//}
+
+	$pickController = entity_get_controller('pick');
+	
+	$input = '';
+	while (strtoupper($input) != 'Q') {
+		$input = drush_prompt('Enter the week: ', $week);
+		if (is_numeric($input)) {
+			// continue
+			$week = $input;
+			$slate_week = $pickem->getSlateWeek($week);
+
+			if ($pickem->slateWeekIsOpen($week)) {
+				drush_print(
+					format_plural(count($affected_players), 
+						'1 player will be affected by adding events.', 
+						'@count players will be affected by adding events.'
+						)
+					);
+			}
+			drush_print('');
+			
+			$result = db_select('sportsevent', 's')
+				->fields('s', array('eid'))
+				->condition(db_and()
+					->condition('event_date', $slate_week->start, '>=')
+					->condition('event_date', $slate_week->end, '<=')
+				)
+				->condition('season', $pickem->season)
+				->condition('sport', $pickem->sport)
+				->orderBy('event_date')
+				->execute();
+			$s = $result->fetchAllAssoc('eid');
+			if (!empty($s)) {
+				$sportsEvents = entity_load('sportsevent', array_keys($s));
+			}
+			/*	
+			$query = new EntityFieldQuery();
+			$result = $query->entityCondition('entity_type', 'sportsevent')
+				->propertyCondition('week', $week)
+				->propertyCondition('sport', $pickem->sport)
+				->propertyCondition('season', $pickem->season)
+				->execute();
+				
+			$sportsEvents = FALSE;
+			
+			if (isset($result['sportsevent'])) {
+				$eids = array_keys($result['sportsevent']);
+				$sportsEvents = entity_load('sportsevent', $eids);
+			}
+			*/
+			if ($sportsEvents) {
+				$choices = array();
+				foreach ($sportsEvents as $eid => $event) {
+					if (isset($event->belongsToSlate)) {
+						$a = array_intersect($pickem->pickem_slate_ids, $event->belongsToSlate);
+						if (empty($a)) {
+							$choices[$eid] = $event->displayTitle() . ' -- ' . date('M j, g:i A - D', $event->event_date);
+						}
+					}
+					else {
+						$choices[$eid] = $event->displayTitle() . ' -- ' . date('M j, g:i A - D', $event->event_date);
+					}
+				}
+				$choices['done'] = '-- Select another week --';
+				while(TRUE) {
+			
+					drush_print(
+						format_plural(count($pickem->slate_weeks[$week]->pickem_slate), 
+							'1 sporting event in Week ' . $week . ' slate', 
+							'@count sporting events in Week ' . $week . ' slate'
+							)
+						);
+					
+					$selection = drush_choice($choices, 'Select one or more sporting events | press "q" to exit this task.');
+					drush_print('[' . $selection . ']');
+					if ($selection == 'done') {
+						// process the selections (if any)
+						break;
+					}
+					if (empty($selection)) {
+						$input = 'q';
+						break;
+					}
+					// process the selection, then mark it as 'selected'
+					if (($slateEvent = $pickem->addSportsEventToSlate($sportsEvents[$selection], $week)) !== FALSE) {
+						//drush_log('Refreshing the pickem record...', 'ok');
+						$pickem = pickem_load($pickem->pid, TRUE);
+						if ($pickem->slateWeekIsOpen($week)) {
+							
+							drush_print('Preparing to provision the picks for slate event (' . $slateEvent->slid . ')...');
+							
+							// TODO provision picks
+							foreach ($affected_players as $uid => $player) {
+								drush_log(sprintf("Will process pick for %s (%s)...", $player->name, $pickem->defaultPickIndicator($player)), 'ok');
+								$pick_team_name = $pickem->determineDefaultPickTeamForPlayer($player, $slateEvent);
+								
+								if (($pick = $pickController->addPick($slateEvent->slid, $pick_team_name, $player->name, $uid)) !== FALSE) {
+									drush_log(sprintf("Pick saved for %s -- %s", $player->name, $pick_team_name), 'ok');
+								}
+							}
+						}
+						$choices[$selection] = $choices[$selection] . ' (selected)';
+					}
+				}
+			}
+		}
+	}
 }

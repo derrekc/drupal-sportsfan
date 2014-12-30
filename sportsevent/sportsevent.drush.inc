@@ -56,26 +56,6 @@ function sportsevent_drush_command() {
 		),
 		'options' => array(),
 	);
-	$items['update-score'] = array(
-		'callback' => 'sportsevent_update_score',
-		'description' => dt('Update the score of a sporting event'),
-		'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
-		'required-arguments' => 4,
-		'arguments' => array(
-			'visitor_name' => 'Visiting Team/Club',
-			'visitor_score' => 'Visiting Team/Club\'s Score',
-			'host_name' => 'Host Team/Club',
-			'host_score' => 'Host Team/Club\'s Score',
-			'sport' => dt('Sport for which the event exists.'),
-		),
-		'options' => array(
-			'overtimes' => dt('Number of overtime sessions.'),
-			'season' => 'Season in which this event is played.',
-			'week' => 'Week in which the event is played',
-			'pid' => 'ID of the pickem for which to update results',
-		),
-		'aliases' => array('upsc'),
-	);
 	$items['set-lines-rss-url'] = array(
 		'description' => dt('Set the URL for the RSS feed for betting lines for a given sport (or league).'),
 		'callback' => 'sportsevent_set_line_feed_url',
@@ -123,6 +103,7 @@ function sportsevent_drush_command() {
 		),
 		'options' => array(
 			'venue_id' => 'Venue of the Event',
+			'select_venue' => 'Prompt for the Event Venue',
 			'neutral' => 'Indicate this event is played at a neutral site',
 			'pickem_id' => 'Pickem ID, if supplied, update Pickem results',
 			'pickem_week' => 'Pickem Week (e.g. 1)',
@@ -252,7 +233,7 @@ function sportsevent_update_scores_for_pickem($pid, $week = NULL) {
 			
 			if ($pickem) {
 				// drush_print('Prepare to update pickem results for ' . $pickem->title . '...');
-				_process_sportsevent_result_for_pickem($event, $pickem);
+				_process_sportsevent_result_for_pickem($event, $pickem, $slateEvent->week);
 			}
 			$event->save();
 			next($slateEvents);
@@ -525,10 +506,10 @@ function sportsevent_update_score($visitor_name, $visitor_score, $host_name, $ho
 /**
  * Internal helper function
  */
-function _process_sportsevent_result_for_pickem($event, $pickem) {
+function _process_sportsevent_result_for_pickem($event, $pickem, $slateWeek) {
 	$controller = entity_get_controller('pickem');
 	try {
-		$processed = $controller->processSportsEventResults($pickem, $event);
+		$processed = $controller->processSportsEventResults($pickem, $event, $slateWeek);
 		drush_log(sprintf("%d pick(s) processed for this game in '%s'...", $processed['processed'], $pickem->title), 'ok');
 		drush_print_r($processed);
 	} catch(Exception $exception) {
@@ -801,6 +782,7 @@ function sportsevent_add_event($sport, $host, $visitor, $event_date, $week) {
 	$title = drush_get_option('title', FALSE);
 	$tv = drush_get_option('tv', FALSE);
 	$location = drush_get_option('location', FALSE);
+	$select_venue = drush_get_option('select_venue', FALSE);
 
 	drush_print("Loading Teams.  Please wait...");
 	
@@ -840,13 +822,33 @@ function sportsevent_add_event($sport, $host, $visitor, $event_date, $week) {
 	$entity->host_conf_name = $teams[$host];
 	$entity->visiting_conf_name = $teams[$visitor];
 	
-	if ($venue) {
-		// use the location from the venue
-		$entity->location = $venue->location_city . ', ' . $venue->location_state;
-		$entity->venue_id = $venue_id;
+	if ($select_venue) {
+		$venues = db_select('venue', 'v')
+			->fields('v', array('vid', 'title', 'nickname', 'location_state', 'location_city'))
+			->condition('sport', $sport)
+			->orderBy('title')
+			->execute()
+			->fetchAllAssoc('vid');
+		$venue_options = array();
+		foreach ($venues as $vid => $v) {
+			$venue_options[$vid] = !empty($v->nickname) 
+				? $v->nickname . ' (' . $v->location_city . ', '. $v->location_state . ')'
+				: $v->title . ' (' . $v->location_city . ', ' . $v->location_state . ')';
+		}
+		if (($venue_input = drush_choice($venue_options, 'Select a venue'))) {
+			drush_log('Selected Venue ID = ' . $venue_input, 'ok');
+			$entity->venue_id = $venue_input;
+			$entity->location = $venues[$venue_input]->location_city . ', ' . $venues[$venue_input]->location_state;
+		}
 	} else {
-		if (!is_bool($location) || ($location = drush_prompt('Location')) !== '') {
-			$entity->location = $location;
+		if ($venue) {
+			// use the location from the venue
+			$entity->location = $venue->location_city . ', ' . $venue->location_state;
+			$entity->venue_id = $venue_id;
+		} else {
+			if (!is_bool($location) || ($location = drush_prompt('Location')) !== '') {
+				$entity->location = $location;
+			}
 		}
 	}
 	$entity->neutral = !empty($neutral) ? 'Y' : 'N';
@@ -869,7 +871,7 @@ function sportsevent_add_event($sport, $host, $visitor, $event_date, $week) {
 	drush_print_r($entity);
 	if (empty($noupdate) && $entity->save()) {
 		// saved, tell me so i can rest easy
-		drush_log("Event saved", 'ok');
+		drush_log("Event saved -- id=[" . $entity->eid . "]", 'ok');
 		if (!empty($pickem_id)) {
 			drush_print('Adding to pickem...');
 			$result = db_insert('pickem_slate')

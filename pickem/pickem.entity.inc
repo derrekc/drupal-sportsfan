@@ -34,8 +34,6 @@ class Pickem extends Entity {
 		    $slids[] = $record->slid;
 		  }
 		  $pickem_slate = entity_load('pickem_slate', $slids);
-		
-			//$pickem_slate = entity_load('pickem_slate', FALSE, array('pid' => $this->pid));
 			$this->pickem_slate = $pickem_slate;
 			$this->pickem_slate_ids = array_keys($result['pickem_slate']);
 		}
@@ -443,6 +441,10 @@ class PickemAPIController extends EntityAPIController {
 		return parent::load($ids, $conditions);
 	}	
 	
+	#protected function attachLoad($pickem, $revision_id = FALSE) {
+	#	
+	#}
+	
 	public function addPlayer($uid, $uname, $pickem_id, $status=1) {
 		
 		$bundle = 'pickem_player';
@@ -459,7 +461,7 @@ class PickemAPIController extends EntityAPIController {
 		return FALSE;
 	}
 	
-	public function processSportsEventResults($pickem, $sportsEvent) {
+	public function processSportsEventResults($pickem, $sportsEvent, $slateWeek) {
 		// TODO find the PickemSlate entities attached to the sportsevent->eid value
 		$pickemPlayerResultController = entity_get_controller('pickem_player_result');
 
@@ -474,7 +476,7 @@ class PickemAPIController extends EntityAPIController {
 			foreach ($pickemSlate->picks as $player_uid => $pick) {
 
 				// create or locate the PickemPlayerResult for this player
-				$playerResult = $pickemPlayerResultController->pickemResultForPlayer($pickem->pid, $player_uid, $pick->playername, $sportsEvent->week);
+				$playerResult = $pickemPlayerResultController->pickemResultForPlayer($pickem->pid, $player_uid, $pick->playername, $slateWeek);
 
 				$pick->correct = ($sportsEvent->winning_team_name) == $pick->pick_team_name ? 'Y' : 'N';
 				if ($pick->correct == 'Y') {

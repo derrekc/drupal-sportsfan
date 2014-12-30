@@ -331,3 +331,15 @@ function pickem_admin_week_close_form_submit($form, $form_state) {
 function pickem_sportsevent_savescore() {
 	
 }
+
+function pickem_type_form($form, &$form_state, $pickem_type) {
+	$form['preamble'] = array(
+		'#type' => 'markup',
+		'#markup' => 'Coming soon'
+	);
+	return $form;
+}
+
+function pickem_overview_types() {
+	return 'Coming soon';
+}

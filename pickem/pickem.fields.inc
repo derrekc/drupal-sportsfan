@@ -21,13 +21,6 @@ function _pickem_installed_fields() {
 			),
 			'widget' => array(
 				'type' => 'options_select',
-				#'settings' => array(
-				#	'allowed_values' => array(
-				#		'hometeam' => $t('Home Team'),
-				#		'visitingteam' => $t('Visiting Team'),
-				#		'topranked' => $t('Team with Highest Ranking'),
-				#	),
-				#),
 			)
 		),
 		'max_bye_weeks_allowed' => array(

@@ -21,19 +21,39 @@ function pickem_menu() {
 			'title' => 'Pickem',
 			'description' => 'Pickem Management',
 			'access arguments' => array('administer pickem entities'),
+			'page callback' => 'pickem_overview_types',
+			'file' => 'includes/pickem.admin.inc',
 		),
-		'admin/structure/pickem/manage' => array(
-			'title' => 'Management',
-			'access arguments' => array('administer pickem entities'),
+		#'admin/structure/pickem/manage' => array(
+		#	'title' => 'Management',
+		#	'access arguments' => array('administer pickem entities'),
+		#),
+		'admin/structure/pickem/list' => array(
+			'title' => 'List',
+			'type' => MENU_DEFAULT_LOCAL_TASK,
+			'weight' => -10,
 		),
 		'admin/structure/pickem/manage/weekly-pickem' => array(
 			'title' => 'Weekly Pickem',
 			'access arguments' => array('administer pickem entities'),
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('pickem_type_form', 4),
+			'file' => 'includes/pickem.admin.inc',
+		),
+		'admin/structure/pickem/manage/weekly-pickem/edit' => array(
+			'title' => 'Edit',
+			'type' => MENU_DEFAULT_LOCAL_TASK,
 		),
 		'admin/structure/pickem/manage/daily-pickem' => array(
 			'title' => 'Daily Pickem',
-			'description' => 'Pickem Management',
 			'access arguments' => array('administer pickem entities'),
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('pickem_type_form', 4),
+			'file' => 'includes/pickem.admin.inc',
+		),
+		'admin/structure/pickem/manage/daily-pickem/edit' => array(
+			'title' => 'Edit',
+			'type' => MENU_DEFAULT_LOCAL_TASK,
 		),
 		'admin/content/pickem/manage/%pickem/weeks' => array(
 			'title' => 'Manage Weeks',
@@ -1382,6 +1402,8 @@ function pickem_user_view_alter(&$build) {
 }
 
 function pickem_user_presave(&$edit, $account, $category) {
+	if (!isset($edit['status'])) { return; }
+	
 	if ($edit['status'] == 1 && $account->status == 0) {
 		// user is in process of becoming unblocked
 		// update pickem_player record and set status = 1
